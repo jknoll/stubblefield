@@ -1,0 +1,130 @@
+/* Canvas and game-specific styles */
+
+.game-container {
+  position: relative;
+  display: inline-block;
+  margin: 0 auto 20px;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+}
+
+#game-canvas {
+  display: block;
+  border: 2px solid #333;
+  background: #000;
+}
+
+#metronome-canvas {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Hit feedback overlay */
+.hit-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  font-weight: bold;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+.hit-feedback.show {
+  opacity: 1;
+  animation: feedbackPulse 0.5s ease-out;
+}
+
+.hit-feedback.perfect {
+  color: #4CAF50;
+}
+
+.hit-feedback.good {
+  color: #8BC34A;
+}
+
+.hit-feedback.ok {
+  color: #FFC107;
+}
+
+.hit-feedback.early,
+.hit-feedback.late {
+  color: #FF9800;
+}
+
+.hit-feedback.miss,
+.hit-feedback.wrong {
+  color: #F44336;
+}
+
+@keyframes feedbackPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Countdown overlay */
+.countdown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 120px;
+  font-weight: bold;
+  color: #4CAF50;
+  text-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.countdown-overlay.show {
+  opacity: 1;
+  animation: countdownPulse 0.8s ease-out;
+}
+
+@keyframes countdownPulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Canvas parent centering */
+section.game-container,
+section.metronome-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
