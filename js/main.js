@@ -1,18 +1,20 @@
 // Main application entry point
 
 import { MidiHandler } from './midiHandler.js';
+import { KeyboardHandler } from './keyboardHandler.js';
 import { GameState } from './gameState.js';
 import { NoteRenderer } from './noteRenderer.js';
 import { TimingJudge } from './timingJudge.js';
 import { ScoreManager } from './scoreManager.js';
 import { Metronome } from './metronome.js';
 import { AudioManager } from './audioManager.js';
-import { BASIC_ROCK_BEAT, createPattern, PATTERNS } from './patterns.js';
+import { BASIC_ROCK_BEAT, createPattern, PATTERNS, loadFunkyDrummerPattern, getFunkyDrummerBPM } from './patterns.js';
 import { MIDI_NOTE_MAP } from './constants.js';
 
 class DrumGame {
   constructor() {
     this.midiHandler = null;
+    this.keyboardHandler = null;
     this.gameState = null;
     this.noteRenderer = null;
     this.timingJudge = null;
@@ -47,9 +49,12 @@ class DrumGame {
     this.midiHandler = new MidiHandler();
     const midiSuccess = await this.midiHandler.initialize();
 
-    if (!midiSuccess) {
-      this.showMidiError();
-    }
+    // Initialize keyboard handler (always available as fallback)
+    this.keyboardHandler = new KeyboardHandler();
+    this.keyboardHandler.initialize();
+
+    // Pre-load Funky Drummer pattern from MIDI file
+    await loadFunkyDrummerPattern();
 
     // Initialize game modules
     this.timingJudge = new TimingJudge();
@@ -84,6 +89,11 @@ class DrumGame {
   setupEventHandlers() {
     // MIDI input -> timing judge -> score manager
     this.midiHandler.registerNoteCallback((midiNote, velocity, timestamp) => {
+      this.handleMidiInput(midiNote, velocity, timestamp);
+    });
+
+    // Keyboard input -> same pipeline as MIDI
+    this.keyboardHandler.registerNoteCallback((midiNote, velocity, timestamp) => {
       this.handleMidiInput(midiNote, velocity, timestamp);
     });
 
@@ -151,7 +161,7 @@ class DrumGame {
     });
 
     document.getElementById('bpm-down').addEventListener('click', () => {
-      this.changeBPM(Math.max(60, this.currentBPM - 5));
+      this.changeBPM(Math.max(30, this.currentBPM - 5));
     });
 
     // Mixer control handlers
@@ -171,12 +181,38 @@ class DrumGame {
     document.getElementById('pattern-select').addEventListener('change', (e) => {
       this.changePattern(e.target.value);
     });
+
+    // Loop count selector handler
+    document.getElementById('loop-count').addEventListener('change', (e) => {
+      this.changeLoopCount(parseInt(e.target.value));
+    });
+
+    // MIDI device selector handler
+    document.getElementById('midi-device-select').addEventListener('change', (e) => {
+      this.handleDeviceSelection(e.target.value);
+    });
+  }
+
+  /**
+   * Get current loop count from UI
+   */
+  getLoopCount() {
+    const loopSelect = document.getElementById('loop-count');
+    return loopSelect ? parseInt(loopSelect.value) : 4;
   }
 
   /**
    * Handle MIDI input from drums
    */
   handleMidiInput(midiNote, velocity, timestamp) {
+    const noteInfo = MIDI_NOTE_MAP[midiNote];
+    if (!noteInfo) return; // Unknown note
+
+    // Always play sound and show lane indicator (even when not playing)
+    this.playDrumHit(midiNote, velocity);
+    this.showLaneIndicator(noteInfo.lane);
+
+    // Only do scoring/judgment when game is playing
     if (!this.gameState.isPlaying) return;
 
     // Find matching note
@@ -201,9 +237,9 @@ class DrumGame {
       this.gameState.recordHit(matchingNote, judgment);
 
       // Visual feedback
-      this.showHitFeedback(judgment, MIDI_NOTE_MAP[midiNote].lane);
+      this.showHitFeedback(judgment, noteInfo.lane);
 
-      console.log(`Hit: ${MIDI_NOTE_MAP[midiNote].name} - ${judgment.judgment} (${judgment.timeDiff.toFixed(0)}ms)`);
+      console.log(`Hit: ${noteInfo.name} - ${judgment.judgment} (${judgment.timeDiff.toFixed(0)}ms)`);
     } else {
       // Wrong note or not in timing window
       const judgment = {
@@ -212,10 +248,28 @@ class DrumGame {
         isCorrect: false
       };
       this.scoreManager.recordJudgment(judgment);
-      this.showHitFeedback(judgment, MIDI_NOTE_MAP[midiNote]?.lane || 0);
+      this.showHitFeedback(judgment, noteInfo.lane);
 
       console.log(`Wrong note or miss: ${midiNote}`);
     }
+  }
+
+  /**
+   * Play drum hit sound (user input - panned right)
+   */
+  playDrumHit(midiNote, velocity) {
+    if (this.audioManager && this.audioManager.initialized) {
+      this.audioManager.playUserDrumSound(midiNote, velocity);
+    }
+  }
+
+  /**
+   * Show lane indicator flash (always visible, even when not playing)
+   */
+  showLaneIndicator(lane) {
+    // Add visual feedback to the lane at the hit line position
+    const mockJudgment = { judgment: 'HIT' };
+    this.noteRenderer.addHitFeedback(mockJudgment, lane);
   }
 
   /**
@@ -341,20 +395,66 @@ class DrumGame {
   }
 
   /**
-   * Update MIDI device status display
+   * Update MIDI device status display and populate device selector
    */
   updateDeviceStatus() {
     const indicator = document.getElementById('midi-indicator');
-    const deviceName = document.getElementById('midi-device-name');
+    const deviceSelect = document.getElementById('midi-device-select');
+
+    if (!deviceSelect) return;
+
+    // Clear existing options
+    deviceSelect.innerHTML = '';
 
     if (this.midiHandler.hasDevices()) {
       const devices = this.midiHandler.getAvailableDevices();
       indicator.className = 'status-connected';
-      deviceName.textContent = devices[0].name;
+
+      // Add option for each device
+      devices.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.id;
+        option.textContent = device.name;
+        deviceSelect.appendChild(option);
+      });
+
+      // Add "All Devices" option if multiple devices
+      if (devices.length > 1) {
+        const allOption = document.createElement('option');
+        allOption.value = 'all';
+        allOption.textContent = `All Devices (${devices.length})`;
+        deviceSelect.insertBefore(allOption, deviceSelect.firstChild);
+      }
+
+      // Set selection to current selected device
+      const selectedId = this.midiHandler.getSelectedDeviceId();
+      if (selectedId === null && devices.length > 1) {
+        deviceSelect.value = 'all';
+      } else if (selectedId) {
+        deviceSelect.value = selectedId;
+      } else {
+        deviceSelect.value = devices[0].id;
+      }
     } else {
-      indicator.className = 'status-disconnected';
-      deviceName.textContent = 'No MIDI device';
+      // No MIDI device, but keyboard is always available
+      indicator.className = 'status-connected';
+      const option = document.createElement('option');
+      option.value = 'keyboard';
+      option.textContent = 'Keyboard (A/S/D/J/K/L)';
+      deviceSelect.appendChild(option);
     }
+  }
+
+  /**
+   * Handle MIDI device selection change
+   */
+  handleDeviceSelection(deviceId) {
+    if (deviceId === 'all') {
+      this.midiHandler.selectDevice(null); // null = all devices
+    } else if (deviceId !== 'keyboard') {
+      this.midiHandler.selectDevice(deviceId);
+    }
+    console.log(`Device selected: ${deviceId}`);
   }
 
   /**
@@ -377,10 +477,29 @@ class DrumGame {
 
     this.currentBPM = newBPM;
     const patternInfo = PATTERNS[this.currentPatternType];
-    this.currentPattern = createPattern(this.currentPatternType, newBPM, patternInfo.bars);
+    const loopsOrBars = patternInfo.isLoopBased ? this.getLoopCount() : patternInfo.bars;
+    this.currentPattern = createPattern(this.currentPatternType, newBPM, loopsOrBars);
 
     this.regenerateGameState();
     console.log(`BPM changed to ${newBPM}`);
+  }
+
+  /**
+   * Change loop count and regenerate pattern
+   */
+  changeLoopCount(loops) {
+    // Don't change if game is playing
+    if (this.gameState && this.gameState.isPlaying) {
+      console.log('Cannot change loops while game is playing');
+      return;
+    }
+
+    const patternInfo = PATTERNS[this.currentPatternType];
+    const loopsOrBars = patternInfo.isLoopBased ? loops : patternInfo.bars;
+    this.currentPattern = createPattern(this.currentPatternType, this.currentBPM, loopsOrBars);
+
+    this.regenerateGameState();
+    console.log(`Loop count changed to ${loops}`);
   }
 
   /**
@@ -400,7 +519,8 @@ class DrumGame {
     // For now, auto-set to default BPM for the pattern
     this.currentBPM = patternInfo.defaultBPM;
 
-    this.currentPattern = createPattern(patternType, this.currentBPM, patternInfo.bars);
+    const loopsOrBars = patternInfo.isLoopBased ? this.getLoopCount() : patternInfo.bars;
+    this.currentPattern = createPattern(patternType, this.currentBPM, loopsOrBars);
 
     this.regenerateGameState();
     console.log(`Pattern changed to ${patternInfo.name} at ${this.currentBPM} BPM`);
@@ -494,10 +614,10 @@ class DrumGame {
   }
 
   /**
-   * Show MIDI error message
+   * Show MIDI error message (now just logs, since keyboard is always available)
    */
   showMidiError() {
-    alert('Web MIDI API is not supported in this browser or MIDI access was denied.\n\nPlease use Chrome or Edge and ensure MIDI permissions are granted.');
+    console.log('Web MIDI API not available - keyboard input enabled as fallback');
   }
 }
 

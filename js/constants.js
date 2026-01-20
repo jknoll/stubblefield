@@ -1,14 +1,30 @@
 // Configuration and constants for the drum game
 
 // MIDI note mappings for standard drum kit
+// Lane order: Tom 1 at top (0), Kick at bottom (5)
 export const MIDI_NOTE_MAP = {
-  36: { name: 'Kick', lane: 0, color: '#FF4444' },
-  38: { name: 'Snare', lane: 1, color: '#44FF44' },
-  42: { name: 'HH Closed', lane: 2, color: '#4444FF' },
-  46: { name: 'HH Open', lane: 3, color: '#FFFF44' },
-  48: { name: 'Tom 1', lane: 4, color: '#FF44FF' },
-  50: { name: 'Tom 2', lane: 5, color: '#44FFFF' }
+  36: { name: 'Kick', lane: 5, color: '#FF4444' },
+  38: { name: 'Snare', lane: 4, color: '#44FF44' },
+  42: { name: 'HH Closed', lane: 3, color: '#4444FF' },
+  46: { name: 'HH Open', lane: 2, color: '#FFFF44' },
+  48: { name: 'Tom 1', lane: 0, color: '#FF44FF' },
+  50: { name: 'Tom 2', lane: 1, color: '#44FFFF' }
 };
+
+// Keyboard to MIDI note mapping
+export const KEYBOARD_MAP = {
+  'KeyA': 36,  // Kick
+  'KeyS': 38,  // Snare
+  'KeyK': 42,  // HH Closed
+  'KeyL': 46,  // HH Open
+  'KeyD': 48,  // Tom 1
+  'KeyJ': 50   // Tom 2
+};
+
+// Reverse map for display (MIDI note -> key name)
+export const MIDI_TO_KEY = Object.fromEntries(
+  Object.entries(KEYBOARD_MAP).map(([k, v]) => [v, k.replace('Key', '')])
+);
 
 // Timing windows in milliseconds
 export const TIMING_WINDOWS = {
@@ -29,16 +45,16 @@ export const TIMING_SCORES = {
   WRONG_NOTE: -20
 };
 
-// Game configuration
+// Game configuration (horizontal layout - notes flow right to left)
 export const GAME_CONFIG = {
   BPM: 120,
-  SCROLL_SPEED: 0.15,        // Pixels per ms (slower for better visibility)
-  NOTE_HEIGHT: 20,           // Height of note rectangles
-  LANE_WIDTH: 100,           // Width of each drum lane
-  HIT_LINE_Y: 100,           // Y position of the hit line (from bottom)
+  SCROLL_SPEED: 0.2,         // Pixels per ms
+  NOTE_WIDTH: 20,            // Width of note rectangles (horizontal dimension)
+  LANE_HEIGHT: 60,           // Height of each drum lane
+  HIT_LINE_X: 100,           // X position of the hit line (from left edge)
   LOOKAHEAD_TIME: 3000,      // Show notes 3 seconds ahead
-  CANVAS_HEIGHT: 600,
-  CANVAS_WIDTH: 400,         // 4 lanes × 100px
+  CANVAS_WIDTH: 800,         // Wide for horizontal scrolling
+  CANVAS_HEIGHT: 360,        // 6 lanes × 60px
   COMBO_MULTIPLIER: 0.1,     // 10% bonus per combo
   LEAD_IN_TIME: 4000,        // 4 seconds countdown before first note
   COUNTDOWN_BEATS: 4         // Number of beats to count down

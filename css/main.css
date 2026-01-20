@@ -14,7 +14,7 @@ body {
 }
 
 .container {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -45,6 +45,27 @@ header h1 {
 
 #midi-indicator {
   font-size: 20px;
+}
+
+#midi-device-select {
+  padding: 6px 12px;
+  font-size: 14px;
+  background: #333;
+  color: #fff;
+  border: 1px solid #4CAF50;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  min-width: 180px;
+}
+
+#midi-device-select:hover {
+  background: #3a3a3a;
+}
+
+#midi-device-select:focus {
+  border-color: #4CAF50;
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
 }
 
 .status-disconnected {
@@ -180,6 +201,28 @@ header h1 {
 }
 
 #pattern-select:focus {
+  border-color: #4CAF50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+}
+
+#loop-count {
+  padding: 8px 12px;
+  font-size: 14px;
+  background: #333;
+  color: #fff;
+  border: 2px solid #4CAF50;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+
+#loop-count:hover {
+  background: #3a3a3a;
+  border-color: #45a049;
+}
+
+#loop-count:focus {
   border-color: #4CAF50;
   box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
 }

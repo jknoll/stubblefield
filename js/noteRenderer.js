@@ -1,4 +1,4 @@
-// Canvas-based piano-roll note renderer
+// Canvas-based note renderer (horizontal layout - notes flow right to left)
 
 import { GAME_CONFIG, MIDI_NOTE_MAP } from './constants.js';
 
@@ -52,19 +52,19 @@ export class NoteRenderer {
   }
 
   /**
-   * Draw background gradient
+   * Draw background gradient (horizontal, darker on left)
    */
   drawBackground() {
-    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-    gradient.addColorStop(0, '#0a0a0a');
-    gradient.addColorStop(1, '#1a1a1a');
+    const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
+    gradient.addColorStop(0, '#1a1a1a');
+    gradient.addColorStop(1, '#0a0a0a');
 
     this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   /**
-   * Draw vertical lane dividers and labels
+   * Draw horizontal lane dividers and labels on left side
    */
   drawLanes() {
     const laneCount = Object.keys(MIDI_NOTE_MAP).length;
@@ -72,43 +72,44 @@ export class NoteRenderer {
     this.ctx.strokeStyle = '#333';
     this.ctx.lineWidth = 1;
 
-    // Draw vertical dividers
+    // Draw horizontal dividers
     for (let i = 0; i <= laneCount; i++) {
-      const x = i * this.config.LANE_WIDTH;
+      const y = i * this.config.LANE_HEIGHT;
       this.ctx.beginPath();
-      this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, this.canvas.height);
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(this.canvas.width, y);
       this.ctx.stroke();
     }
 
-    // Draw lane labels at the top
+    // Draw lane labels on the left side
     this.ctx.fillStyle = '#888';
-    this.ctx.font = '12px Arial';
-    this.ctx.textAlign = 'center';
+    this.ctx.font = '11px Arial';
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'middle';
 
     Object.entries(MIDI_NOTE_MAP).forEach(([midiNote, info]) => {
-      const x = info.lane * this.config.LANE_WIDTH + this.config.LANE_WIDTH / 2;
-      const y = 20;
+      const y = info.lane * this.config.LANE_HEIGHT + this.config.LANE_HEIGHT / 2;
+      const x = 8;
 
       this.ctx.fillText(info.name, x, y);
     });
   }
 
   /**
-   * Draw the hit line where notes should be struck
+   * Draw the hit line where notes should be struck (vertical line on left)
    */
   drawHitLine() {
-    const y = this.canvas.height - this.config.HIT_LINE_Y;
+    const x = this.config.HIT_LINE_X;
 
-    // Draw glowing line
+    // Draw glowing vertical line
     this.ctx.strokeStyle = '#FFFFFF';
     this.ctx.lineWidth = 3;
     this.ctx.shadowBlur = 10;
     this.ctx.shadowColor = '#FFFFFF';
 
     this.ctx.beginPath();
-    this.ctx.moveTo(0, y);
-    this.ctx.lineTo(this.canvas.width, y);
+    this.ctx.moveTo(x, 0);
+    this.ctx.lineTo(x, this.canvas.height);
     this.ctx.stroke();
 
     // Reset shadow
@@ -124,38 +125,38 @@ export class NoteRenderer {
     const noteInfo = MIDI_NOTE_MAP[note.midiNote];
     if (!noteInfo) return; // Unknown note type
 
-    // Calculate Y position based on time until hit
-    const yPosition = this.calculateYPosition(note.time, currentTime);
+    // Calculate X position based on time until hit (notes come from right)
+    const xPosition = this.calculateXPosition(note.time, currentTime);
 
     // Don't draw if off screen
-    if (yPosition < -this.config.NOTE_HEIGHT || yPosition > this.canvas.height) {
+    if (xPosition < -this.config.NOTE_WIDTH || xPosition > this.canvas.width) {
       return;
     }
 
-    // Calculate X position based on lane
-    const xPosition = noteInfo.lane * this.config.LANE_WIDTH;
+    // Calculate Y position based on lane
+    const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
 
     // Draw note rectangle with glow
     this.ctx.fillStyle = noteInfo.color;
     this.ctx.shadowBlur = 10;
     this.ctx.shadowColor = noteInfo.color;
 
-    const padding = 5;
+    const padding = 4;
     this.ctx.fillRect(
-      xPosition + padding,
-      yPosition,
-      this.config.LANE_WIDTH - padding * 2,
-      this.config.NOTE_HEIGHT
+      xPosition,
+      yPosition + padding,
+      this.config.NOTE_WIDTH,
+      this.config.LANE_HEIGHT - padding * 2
     );
 
     // Draw note border
     this.ctx.strokeStyle = '#FFF';
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(
-      xPosition + padding,
-      yPosition,
-      this.config.LANE_WIDTH - padding * 2,
-      this.config.NOTE_HEIGHT
+      xPosition,
+      yPosition + padding,
+      this.config.NOTE_WIDTH,
+      this.config.LANE_HEIGHT - padding * 2
     );
 
     // Reset shadow
@@ -163,18 +164,22 @@ export class NoteRenderer {
   }
 
   /**
-   * Calculate Y position of note based on time until hit
+   * Calculate X position of note based on time until hit
+   * Notes scroll from right to left, hit line is on left
    * @param {number} noteTime - Time when note should be hit
    * @param {number} currentTime - Current game time
-   * @returns {number} Y position on canvas
+   * @returns {number} X position on canvas
    */
-  calculateYPosition(noteTime, currentTime) {
+  calculateXPosition(noteTime, currentTime) {
     const timeUntilHit = noteTime - currentTime;
-    const hitLineY = this.canvas.height - this.config.HIT_LINE_Y;
+    const hitLineX = this.config.HIT_LINE_X;
 
-    // Notes scroll from top to bottom
-    const yOffset = timeUntilHit * this.config.SCROLL_SPEED;
-    return hitLineY - yOffset;
+    // Notes scroll from right to left
+    // When timeUntilHit is positive (future), note is to the right of hit line
+    // When timeUntilHit is 0, note is at hit line
+    // When timeUntilHit is negative (past), note is to the left of hit line
+    const xOffset = timeUntilHit * this.config.SCROLL_SPEED;
+    return hitLineX + xOffset;
   }
 
   /**
@@ -209,16 +214,16 @@ export class NoteRenderer {
       const progress = elapsed / hit.duration;
       const alpha = 1 - progress;
 
-      // Position at hit line
-      const y = this.canvas.height - this.config.HIT_LINE_Y;
-      const x = hit.lane * this.config.LANE_WIDTH + this.config.LANE_WIDTH / 2;
+      // Position at hit line (vertical line on left)
+      const x = this.config.HIT_LINE_X;
+      const y = hit.lane * this.config.LANE_HEIGHT + this.config.LANE_HEIGHT / 2;
 
       // Draw expanding circle
       this.ctx.strokeStyle = this.getJudgmentColor(hit.judgment);
       this.ctx.lineWidth = 3;
       this.ctx.globalAlpha = alpha;
 
-      const radius = 20 + (progress * 30); // Expand from 20 to 50
+      const radius = 15 + (progress * 25); // Expand from 15 to 40
       this.ctx.beginPath();
       this.ctx.arc(x, y, radius, 0, Math.PI * 2);
       this.ctx.stroke();
@@ -240,7 +245,8 @@ export class NoteRenderer {
       EARLY: '#FF9800',
       LATE: '#FF9800',
       MISS: '#F44336',
-      WRONG_NOTE: '#F44336'
+      WRONG_NOTE: '#F44336',
+      HIT: '#FFFFFF'  // White for generic lane indicator
     };
 
     return colors[judgment] || '#888';

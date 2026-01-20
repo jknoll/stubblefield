@@ -14,7 +14,9 @@
       <h1>Drum Practice Game</h1>
       <div id="midi-status">
         <span id="midi-indicator" class="status-disconnected">●</span>
-        <span id="midi-device-name">No MIDI device</span>
+        <select id="midi-device-select">
+          <option value="">No MIDI device</option>
+        </select>
       </div>
     </header>
 
@@ -26,7 +28,7 @@
       </div>
       <div class="bpm-controls">
         <button id="bpm-down" class="bpm-btn">-</button>
-        <input type="range" id="bpm-slider" min="60" max="200" value="120" step="5">
+        <input type="range" id="bpm-slider" min="30" max="200" value="120" step="5">
         <button id="bpm-up" class="bpm-btn">+</button>
       </div>
       <div class="pattern-selector">
@@ -37,13 +39,22 @@
           <option value="hiphop">Hip-Hop Break</option>
           <option value="amen">Amen Break</option>
           <option value="funk">Funky Groove</option>
+          <option value="funkydrummer">Funky Drummer (Intro Break)</option>
+        </select>
+        <label for="loop-count">Loops:</label>
+        <select id="loop-count">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="4" selected>4</option>
+          <option value="8">8</option>
+          <option value="16">16</option>
         </select>
       </div>
     </section>
 
     <!-- Game Canvas Section -->
     <section class="game-container">
-      <canvas id="game-canvas" width="400" height="600"></canvas>
+      <canvas id="game-canvas" width="800" height="360"></canvas>
 
       <!-- Countdown Overlay -->
       <div id="countdown-overlay" class="countdown-overlay"></div>
@@ -118,20 +129,21 @@
     <section class="instructions-container">
       <h3>Instructions</h3>
       <ol>
-        <li>Connect your MIDI drum kit to this device</li>
-        <li>Ensure the MIDI device is detected (green indicator above)</li>
+        <li>Connect a MIDI drum kit or use your keyboard</li>
         <li>Click "Start" to begin the practice pattern</li>
         <li>Hit the drums in time with the scrolling notes</li>
         <li>Aim for "Perfect" timing to build your combo!</li>
       </ol>
 
       <div class="drum-mapping">
-        <h4>Drum Mapping</h4>
+        <h4>Controls</h4>
         <ul>
-          <li><span class="drum-color" style="background: #FF4444;"></span> Kick (MIDI 36)</li>
-          <li><span class="drum-color" style="background: #44FF44;"></span> Snare (MIDI 38)</li>
-          <li><span class="drum-color" style="background: #4444FF;"></span> Hi-Hat Closed (MIDI 42)</li>
-          <li><span class="drum-color" style="background: #FFFF44;"></span> Hi-Hat Open (MIDI 46)</li>
+          <li><span class="drum-color" style="background: #FF4444;"></span> Kick - A key / MIDI 36</li>
+          <li><span class="drum-color" style="background: #44FF44;"></span> Snare - S key / MIDI 38</li>
+          <li><span class="drum-color" style="background: #4444FF;"></span> Hi-Hat Closed - K key / MIDI 42</li>
+          <li><span class="drum-color" style="background: #FFFF44;"></span> Hi-Hat Open - L key / MIDI 46</li>
+          <li><span class="drum-color" style="background: #FF44FF;"></span> Tom 1 - D key / MIDI 48</li>
+          <li><span class="drum-color" style="background: #44FFFF;"></span> Tom 2 - J key / MIDI 50</li>
         </ul>
       </div>
     </section>

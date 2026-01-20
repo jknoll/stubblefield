@@ -1,5 +1,99 @@
 // Practice patterns for the drum game
 
+import { MidiParser } from './midiParser.js';
+
+// Cached Funky Drummer pattern loaded from MIDI file
+let cachedFunkyDrummerNotes = null;
+let cachedFunkyDrummerBPM = 101;
+let cachedFunkyDrummerBarDuration = 0;
+
+/**
+ * Load and cache the Funky Drummer pattern from MIDI file
+ * Call this once during initialization
+ */
+export async function loadFunkyDrummerPattern() {
+  if (cachedFunkyDrummerNotes) {
+    return cachedFunkyDrummerNotes;
+  }
+
+  try {
+    const response = await fetch('./Funky%20Drummer%20Break%20Intro.mid');
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const buffer = await response.arrayBuffer();
+    const parser = new MidiParser();
+    const parsed = await parser.parse(buffer);
+
+    cachedFunkyDrummerBPM = parsed.bpm;
+
+    // Calculate bar duration at original BPM
+    const beatDuration = (60 / cachedFunkyDrummerBPM) * 1000;
+    cachedFunkyDrummerBarDuration = beatDuration * 4;
+
+    // Store the raw notes (without game state) for looping
+    cachedFunkyDrummerNotes = parsed.notes.map((note) => ({
+      time: note.time,
+      midiNote: note.midiNote,
+      velocity: note.velocity
+    }));
+
+    console.log(`Loaded Funky Drummer pattern: ${cachedFunkyDrummerNotes.length} notes at ${cachedFunkyDrummerBPM} BPM`);
+    return cachedFunkyDrummerNotes;
+  } catch (error) {
+    console.error('Failed to load Funky Drummer pattern:', error);
+    return [];
+  }
+}
+
+/**
+ * Get the Funky Drummer BPM (for UI display)
+ */
+export function getFunkyDrummerBPM() {
+  return cachedFunkyDrummerBPM;
+}
+
+/**
+ * Generate Funky Drummer pattern from cached MIDI data
+ * Loops the 1-bar pattern for the specified number of loops
+ * Preserves original velocity data for authentic feel
+ */
+function generateFunkyDrummer(bpm = 101, loops = 4) {
+  if (!cachedFunkyDrummerNotes || cachedFunkyDrummerNotes.length === 0) {
+    console.warn('Funky Drummer not loaded, falling back to Funky Groove');
+    return generateFunkyGroove(bpm, loops);
+  }
+
+  const notes = [];
+
+  // Scale timing if BPM is different from original
+  const timeScale = cachedFunkyDrummerBPM / bpm;
+  const scaledBarDuration = cachedFunkyDrummerBarDuration * timeScale;
+
+  // Loop the pattern
+  for (let loop = 0; loop < loops; loop++) {
+    const loopOffset = loop * scaledBarDuration;
+
+    cachedFunkyDrummerNotes.forEach((note, i) => {
+      notes.push({
+        time: (note.time * timeScale) + loopOffset,
+        midiNote: note.midiNote,
+        velocity: note.velocity,
+        id: `funky_${loop}_${i}_${note.midiNote}`,
+        hit: false,
+        judged: false,
+        sounded: false
+      });
+    });
+  }
+
+  // Sort by time
+  notes.sort((a, b) => a.time - b.time);
+
+  return notes;
+}
+
 /**
  * Generate a basic rock beat pattern
  * Pattern: Kick on 1&3, Snare on 2&4, Hi-hat on eighth notes
@@ -298,6 +392,11 @@ export function createPattern(patternType = 'rock', bpm = 120, bars = 8) {
       notes = generateFunkyGroove(bpm, Math.max(4, bars));
       name = "Funky Groove";
       break;
+    case 'funkydrummer':
+      defaultBPM = 101;
+      notes = generateFunkyDrummer(bpm, bars);
+      name = "Funky Drummer";
+      break;
     case 'rock':
     default:
       defaultBPM = 120;
@@ -326,7 +425,8 @@ export const PATTERNS = {
   house: { name: "House Beat", defaultBPM: 128, bars: 8 },
   hiphop: { name: "Hip-Hop Break", defaultBPM: 95, bars: 4 },
   amen: { name: "Amen Break", defaultBPM: 165, bars: 2 },
-  funk: { name: "Funky Groove", defaultBPM: 105, bars: 4 }
+  funk: { name: "Funky Groove", defaultBPM: 105, bars: 4 },
+  funkydrummer: { name: "Funky Drummer (Intro Break)", defaultBPM: 101, bars: 4, isLoopBased: true }
 };
 
 // Pre-generated basic rock beat

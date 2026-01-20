@@ -7,6 +7,8 @@ export class AudioManager {
     this.audioContext = null;
     this.metronomeGain = null;
     this.drumsGain = null;
+    this.trackPanner = null;  // Panner for MIDI track playback (left)
+    this.userPanner = null;   // Panner for user input (right)
 
     this.metronomeVolume = 0.5;
     this.drumsVolume = 0.7;
@@ -29,6 +31,17 @@ export class AudioManager {
 
       this.drumsGain = this.audioContext.createGain();
       this.drumsGain.gain.value = this.drumsVolume;
+
+      // Create stereo panners for track (left) and user input (right)
+      this.trackPanner = this.audioContext.createStereoPanner();
+      this.trackPanner.pan.value = -1;  // Hard left
+      this.trackPanner.connect(this.audioContext.destination);
+
+      this.userPanner = this.audioContext.createStereoPanner();
+      this.userPanner.pan.value = 1;   // Hard right
+      this.userPanner.connect(this.audioContext.destination);
+
+      // Connect drums gain to both panners (will be used selectively)
       this.drumsGain.connect(this.audioContext.destination);
 
       this.initialized = true;
@@ -81,38 +94,70 @@ export class AudioManager {
   }
 
   /**
-   * Play drum sound
+   * Play drum sound (for track playback - panned left)
    * @param {number} midiNote - MIDI note number
    * @param {number} velocity - Velocity (0-127)
    */
   playDrumSound(midiNote, velocity = 100) {
+    this.playDrumSoundPanned(midiNote, velocity, 'left');
+  }
+
+  /**
+   * Play drum sound for user input (panned right)
+   * @param {number} midiNote - MIDI note number
+   * @param {number} velocity - Velocity (0-127)
+   */
+  playUserDrumSound(midiNote, velocity = 100) {
+    this.playDrumSoundPanned(midiNote, velocity, 'right');
+  }
+
+  /**
+   * Play drum sound with panning
+   * @param {number} midiNote - MIDI note number
+   * @param {number} velocity - Velocity (0-127)
+   * @param {string} pan - 'left', 'right', or 'center'
+   */
+  playDrumSoundPanned(midiNote, velocity = 100, pan = 'center') {
     if (!this.initialized || !this.audioContext) return;
 
     const now = this.audioContext.currentTime;
     const normalizedVelocity = velocity / 127;
 
+    // Select destination based on pan
+    let destination;
+    switch (pan) {
+      case 'left':
+        destination = this.trackPanner;
+        break;
+      case 'right':
+        destination = this.userPanner;
+        break;
+      default:
+        destination = this.drumsGain;
+    }
+
     // Different synthesis for different drums
     switch (midiNote) {
       case 36: // Kick
-        this.playKick(now, normalizedVelocity);
+        this.playKick(now, normalizedVelocity, destination);
         break;
       case 38: // Snare
-        this.playSnare(now, normalizedVelocity);
+        this.playSnare(now, normalizedVelocity, destination);
         break;
       case 42: // Hi-hat closed
       case 46: // Hi-hat open
-        this.playHiHat(now, normalizedVelocity, midiNote === 46);
+        this.playHiHat(now, normalizedVelocity, midiNote === 46, destination);
         break;
       default:
         // Generic tom sound for other notes
-        this.playTom(now, normalizedVelocity);
+        this.playTom(now, normalizedVelocity, destination);
     }
   }
 
   /**
    * Synthesize kick drum sound
    */
-  playKick(time, velocity) {
+  playKick(time, velocity, destination) {
     const osc = this.audioContext.createOscillator();
     const gain = this.audioContext.createGain();
 
@@ -125,7 +170,7 @@ export class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
 
     osc.connect(gain);
-    gain.connect(this.drumsGain);
+    gain.connect(destination);
 
     osc.start(time);
     osc.stop(time + 0.3);
@@ -134,7 +179,7 @@ export class AudioManager {
   /**
    * Synthesize snare drum sound
    */
-  playSnare(time, velocity) {
+  playSnare(time, velocity, destination) {
     // Tone component
     const osc = this.audioContext.createOscillator();
     const oscGain = this.audioContext.createGain();
@@ -146,7 +191,7 @@ export class AudioManager {
     oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
 
     osc.connect(oscGain);
-    oscGain.connect(this.drumsGain);
+    oscGain.connect(destination);
 
     // Noise component
     const bufferSize = this.audioContext.sampleRate * 0.15;
@@ -170,7 +215,7 @@ export class AudioManager {
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
-    noiseGain.connect(this.drumsGain);
+    noiseGain.connect(destination);
 
     osc.start(time);
     osc.stop(time + 0.15);
@@ -180,7 +225,7 @@ export class AudioManager {
   /**
    * Synthesize hi-hat sound
    */
-  playHiHat(time, velocity, isOpen) {
+  playHiHat(time, velocity, isOpen, destination) {
     const bufferSize = this.audioContext.sampleRate * (isOpen ? 0.3 : 0.05);
     const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
     const data = buffer.getChannelData(0);
@@ -203,7 +248,7 @@ export class AudioManager {
 
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(this.drumsGain);
+    gain.connect(destination);
 
     noise.start(time);
   }
@@ -211,7 +256,7 @@ export class AudioManager {
   /**
    * Synthesize tom sound
    */
-  playTom(time, velocity) {
+  playTom(time, velocity, destination) {
     const osc = this.audioContext.createOscillator();
     const gain = this.audioContext.createGain();
 
@@ -222,7 +267,7 @@ export class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
 
     osc.connect(gain);
-    gain.connect(this.drumsGain);
+    gain.connect(destination);
 
     osc.start(time);
     osc.stop(time + 0.3);
