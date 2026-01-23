@@ -58,7 +58,7 @@ export const GAME_CONFIG = {
   CANVAS_MIN_WIDTH: 400,     // Minimum canvas width
   CANVAS_MAX_WIDTH: 1600,    // Maximum canvas width
   COMBO_MULTIPLIER: 0.1,     // 10% bonus per combo
-  COUNTDOWN_BEATS: 8         // Number of beats to count down (lead-in time calculated from BPM)
+  COUNTDOWN_BEATS: 4         // Number of beats to count down (lead-in time calculated from BPM)
 };
 
 // Get lane count from MIDI_NOTE_MAP

@@ -62,6 +62,7 @@ export class MidiLibrary {
       isFill: patternInfo.isFill,
       isVariation: patternInfo.isVariation,
       variationLetter: patternInfo.variationLetter,
+      isLoopBased: true,  // MIDI patterns are loop-based (user selects loop count)
       notes: parsed.notes,
       ticksPerQuarter: parsed.ticksPerQuarter,
       rawDuration: this.calculateDuration(parsed.notes)

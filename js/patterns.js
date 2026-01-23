@@ -58,7 +58,7 @@ export async function initializeMidiLibrary() {
           category: patternDef.category,
           bpm: patternDef.defaultBPM || parsed.bpm,
           defaultBPM: patternDef.defaultBPM || parsed.bpm,
-          isLoopBased: patternDef.isLoopBased || false,
+          isLoopBased: patternDef.isLoopBased !== false,  // Default to true for MIDI patterns
           isFill: patternDef.isFill || false,
           isVariation: patternDef.isVariation || false,
           featured: patternDef.featured || false,
