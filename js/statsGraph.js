@@ -69,8 +69,8 @@ export class StatsGraph {
       this.drawCurrentSessionLine(graphData.currentSession, graphWidth, graphHeight);
     }
 
-    // Draw legend
-    this.drawLegend(hasCurrentSession, hasHistorical);
+    // Draw legend with BPM indicator
+    this.drawLegend(hasCurrentSession, hasHistorical, graphData.bpm);
   }
 
   /**
@@ -144,17 +144,29 @@ export class StatsGraph {
 
     // Draw points
     points.forEach((p, i) => {
-      ctx.fillStyle = this.colors.currentLine;
+      const isLastPoint = i === points.length - 1;
+      const pointRadius = isLastPoint ? 6 : 4;
+
+      // Draw larger highlight ring around last point
+      if (isLastPoint) {
+        ctx.strokeStyle = this.colors.highlight;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = isLastPoint ? this.colors.highlight : this.colors.currentLine;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2);
       ctx.fill();
 
       // Draw accuracy label on last point
-      if (i === points.length - 1) {
+      if (isLastPoint) {
         ctx.fillStyle = this.colors.highlight;
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(`${p.accuracy.toFixed(1)}%`, p.x + 8, p.y - 4);
+        ctx.fillText(`${p.accuracy.toFixed(1)}%`, p.x + 14, p.y - 4);
       }
     });
 
@@ -219,7 +231,7 @@ export class StatsGraph {
   /**
    * Draw legend
    */
-  drawLegend(hasCurrentSession, hasHistorical) {
+  drawLegend(hasCurrentSession, hasHistorical, bpm = null) {
     const ctx = this.ctx;
     let x = this.canvas.width - this.padding.right - 10;
     const y = this.padding.top + 10;
@@ -227,17 +239,27 @@ export class StatsGraph {
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'right';
 
+    // Show BPM indicator if provided
+    if (bpm) {
+      ctx.fillStyle = this.colors.highlight;
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText(`${bpm} BPM`, x, y);
+    }
+
+    const bpmOffset = bpm ? 16 : 0;
+
     if (hasCurrentSession) {
       // Current session indicator
       ctx.fillStyle = this.colors.currentLine;
-      ctx.fillRect(x - 30, y - 5, 20, 3);
+      ctx.fillRect(x - 30, y + bpmOffset - 5, 20, 3);
       ctx.fillStyle = this.colors.text;
-      ctx.fillText('Current', x - 35, y);
+      ctx.font = '10px sans-serif';
+      ctx.fillText('Current', x - 35, y + bpmOffset);
     }
 
     if (hasHistorical) {
       // Historical indicator
-      const yOffset = hasCurrentSession ? 18 : 0;
+      const yOffset = (hasCurrentSession ? 18 : 0) + bpmOffset;
       ctx.strokeStyle = this.colors.historicalLine;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();

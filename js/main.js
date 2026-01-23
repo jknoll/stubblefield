@@ -904,7 +904,7 @@ class DrumGame {
   updateStatsGraph() {
     if (!this.statsGraph || !this.statsManager) return;
 
-    const graphData = this.statsManager.getGraphData(this.currentPatternType);
+    const graphData = this.statsManager.getGraphData(this.currentPatternType, this.currentBPM);
     this.statsGraph.render(graphData, { showHistorical: true });
 
     // Update pattern name display
@@ -914,18 +914,18 @@ class DrumGame {
     const infoEl = document.getElementById('stats-session-info');
     if (infoEl) {
       const currentStats = this.statsManager.getCurrentSessionStats();
-      const patternStats = this.statsManager.getPatternStats(this.currentPatternType);
+      const patternStats = this.statsManager.getPatternStats(this.currentPatternType, this.currentBPM);
 
       if (currentStats && currentStats.loopResults.length > 0) {
         const lastLoop = currentStats.loopResults[currentStats.loopResults.length - 1];
-        infoEl.innerHTML = `Loop ${lastLoop.loopNumber}: <span class="trend-up">${lastLoop.accuracy.toFixed(1)}%</span> accuracy`;
+        infoEl.innerHTML = `Loop ${lastLoop.loopNumber}: <span class="trend-up">${lastLoop.accuracy.toFixed(1)}%</span> @ ${this.currentBPM} BPM`;
       } else if (patternStats && patternStats.sessions.length > 0) {
         const trend = patternStats.recentTrend;
         const trendClass = trend >= 0 ? 'trend-up' : 'trend-down';
         const trendSymbol = trend >= 0 ? '+' : '';
-        infoEl.innerHTML = `${patternStats.sessions.length} sessions | Trend: <span class="${trendClass}">${trendSymbol}${trend}%</span>`;
+        infoEl.innerHTML = `${patternStats.sessions.length} sessions @ ${this.currentBPM} BPM | Trend: <span class="${trendClass}">${trendSymbol}${trend}%</span>`;
       } else {
-        infoEl.textContent = 'Practice to see your progress';
+        infoEl.textContent = `Practice @ ${this.currentBPM} BPM to see progress`;
       }
     }
   }
