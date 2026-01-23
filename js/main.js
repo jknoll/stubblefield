@@ -323,6 +323,11 @@ class DrumGame {
       this.updateDebounceDisplay(debounceMs);
     });
 
+    // Clear stats button handler
+    document.getElementById('clear-stats-btn').addEventListener('click', () => {
+      this.clearCurrentPatternStats();
+    });
+
     // Window resize handler for responsive canvas
     window.addEventListener('resize', () => {
       this.handleResize();
@@ -887,6 +892,9 @@ class DrumGame {
     const graphData = this.statsManager.getGraphData(this.currentPatternType);
     this.statsGraph.render(graphData, { showHistorical: true });
 
+    // Update pattern name display
+    this.updatePatternNameDisplay();
+
     // Update info text
     const infoEl = document.getElementById('stats-session-info');
     if (infoEl) {
@@ -904,6 +912,35 @@ class DrumGame {
       } else {
         infoEl.textContent = 'Practice to see your progress';
       }
+    }
+  }
+
+  /**
+   * Update the pattern name display in the stats section
+   */
+  updatePatternNameDisplay() {
+    const patternNameEl = document.getElementById('stats-pattern-name');
+    if (patternNameEl && this.currentPatternType) {
+      const patternInfo = PATTERNS[this.currentPatternType];
+      if (patternInfo) {
+        patternNameEl.textContent = `(${patternInfo.name})`;
+      }
+    }
+  }
+
+  /**
+   * Clear stats history for the current pattern
+   */
+  clearCurrentPatternStats() {
+    if (!this.statsManager || !this.currentPatternType) return;
+
+    const patternInfo = PATTERNS[this.currentPatternType];
+    const patternName = patternInfo ? patternInfo.name : this.currentPatternType;
+
+    if (confirm(`Clear all progress history for "${patternName}"?`)) {
+      this.statsManager.clearPatternStats(this.currentPatternType);
+      this.updateStatsGraph();
+      console.log(`Cleared stats for ${patternName}`);
     }
   }
 

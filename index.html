@@ -142,7 +142,11 @@
 
     <!-- Progress Tracking Section -->
     <section class="stats-container">
-      <h3>Progress Tracking</h3>
+      <div class="stats-header">
+        <h3>Progress Tracking</h3>
+        <span id="stats-pattern-name" class="stats-pattern-name"></span>
+        <button id="clear-stats-btn" class="btn btn-small btn-danger" title="Clear history for this pattern">Clear History</button>
+      </div>
       <canvas id="stats-canvas" width="600" height="200"></canvas>
       <div class="stats-info">
         <span id="stats-session-info">Practice to see your progress</span>
