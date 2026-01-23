@@ -393,6 +393,22 @@ export class GameState {
   }
 
   /**
+   * Continue the game loop (for infinite loop mode)
+   * Resumes without resetting time or showing countdown
+   */
+  continueLoop() {
+    if (this.isPlaying) return;
+
+    this.startTime = performance.now() - this.currentTime;
+    this.lastFrameTime = performance.now();
+    this.isPlaying = true;
+    this.isPaused = false;
+
+    console.log('Game loop continued');
+    this.gameLoop();
+  }
+
+  /**
    * Reset the game state
    */
   reset() {

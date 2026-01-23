@@ -325,7 +325,7 @@ class DrumGame {
 
     // Clear stats button handler
     document.getElementById('clear-stats-btn').addEventListener('click', () => {
-      this.clearCurrentPatternStats();
+      this.clearAllStatsHistory();
     });
 
     // Window resize handler for responsive canvas
@@ -843,6 +843,9 @@ class DrumGame {
     this.currentPattern.loopCount += additionalLoops;
 
     console.log(`Added ${additionalPattern.notes.length} notes, total duration now ${this.currentPattern.duration}ms`);
+
+    // Continue the game loop (it was stopped by checkPatternComplete)
+    this.gameState.continueLoop();
   }
 
   /**
@@ -929,18 +932,15 @@ class DrumGame {
   }
 
   /**
-   * Clear stats history for the current pattern
+   * Clear all stats history
    */
-  clearCurrentPatternStats() {
-    if (!this.statsManager || !this.currentPatternType) return;
+  clearAllStatsHistory() {
+    if (!this.statsManager) return;
 
-    const patternInfo = PATTERNS[this.currentPatternType];
-    const patternName = patternInfo ? patternInfo.name : this.currentPatternType;
-
-    if (confirm(`Clear all progress history for "${patternName}"?`)) {
-      this.statsManager.clearPatternStats(this.currentPatternType);
+    if (confirm('Clear all progress history for all patterns?')) {
+      this.statsManager.clearAllStats();
       this.updateStatsGraph();
-      console.log(`Cleared stats for ${patternName}`);
+      console.log('Cleared all stats history');
     }
   }
 
