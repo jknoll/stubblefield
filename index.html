@@ -12,11 +12,23 @@
     <!-- Header Section -->
     <header>
       <h1>GrooveLab</h1>
-      <div id="midi-status">
-        <span id="midi-indicator" class="status-disconnected">●</span>
-        <select id="midi-device-select">
-          <option value="">No MIDI device</option>
-        </select>
+      <div class="header-controls">
+        <!-- User Auth Status -->
+        <div id="auth-status" class="auth-status">
+          <button id="sign-in-btn" class="btn btn-auth">Sign In</button>
+          <div id="user-info" class="user-info hidden">
+            <img id="user-avatar" class="user-avatar" alt="User" />
+            <span id="user-name">Guest</span>
+            <button id="sign-out-btn" class="btn btn-auth-small">Sign Out</button>
+          </div>
+        </div>
+        <!-- MIDI Status -->
+        <div id="midi-status">
+          <span id="midi-indicator" class="status-disconnected">●</span>
+          <select id="midi-device-select">
+            <option value="">No MIDI device</option>
+          </select>
+        </div>
       </div>
     </header>
 
@@ -197,6 +209,24 @@
       </div>
     </section>
   </div>
+
+  <!-- Firebase SDK (uncomment and configure to enable auth) -->
+  <!--
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script>
+    // Initialize Firebase with your config
+    // Get this from Firebase Console > Project Settings > Your apps
+    window.firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+  </script>
+  -->
 
   <!-- Load JavaScript modules -->
   <script type="module" src="js/main.js"></script>

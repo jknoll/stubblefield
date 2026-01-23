@@ -34,6 +34,77 @@ header h1 {
   font-weight: 600;
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Auth Status */
+.auth-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-auth {
+  padding: 8px 16px;
+  font-size: 14px;
+  background: #4285F4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-auth:hover {
+  background: #3367D6;
+}
+
+.btn-auth-small {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: #666;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-auth-small:hover {
+  background: #777;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: #1a1a1a;
+  border-radius: 6px;
+}
+
+.user-info.hidden {
+  display: none;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #4CAF50;
+}
+
+#user-name {
+  font-size: 14px;
+  color: #ccc;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #midi-status {
   display: flex;
   align-items: center;

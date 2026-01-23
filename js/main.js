@@ -13,6 +13,7 @@ import { createPattern, PATTERNS, initializeMidiLibrary, getAvailablePatterns, g
 import { MIDI_NOTE_MAP } from './constants.js';
 import { StatsManager } from './statsManager.js';
 import { StatsGraph } from './statsGraph.js';
+import { authManager } from './authManager.js';
 
 class DrumGame {
   constructor() {
@@ -130,8 +131,108 @@ class DrumGame {
     // Render initial stats graph
     this.updateStatsGraph();
 
+    // Initialize Firebase Auth if config is available
+    await this.initializeAuth();
+
     this.initialized = true;
     console.log('Game initialized successfully');
+  }
+
+  /**
+   * Initialize Firebase Authentication
+   */
+  async initializeAuth() {
+    // Check if Firebase config is provided
+    const config = window.firebaseConfig;
+
+    if (config) {
+      const success = await authManager.initialize(config);
+      if (success) {
+        // Register auth state callback
+        authManager.registerAuthStateCallback((user) => {
+          this.updateAuthUI(user);
+        });
+
+        // Set up auth event handlers
+        this.setupAuthEventHandlers();
+      }
+    } else {
+      console.log('Firebase config not found. Auth disabled. To enable:');
+      console.log('1. Uncomment Firebase scripts in index.html');
+      console.log('2. Add your Firebase project config');
+
+      // Hide sign-in button if auth is not available
+      const signInBtn = document.getElementById('sign-in-btn');
+      if (signInBtn) {
+        signInBtn.style.display = 'none';
+      }
+    }
+  }
+
+  /**
+   * Set up authentication event handlers
+   */
+  setupAuthEventHandlers() {
+    const signInBtn = document.getElementById('sign-in-btn');
+    const signOutBtn = document.getElementById('sign-out-btn');
+
+    if (signInBtn) {
+      signInBtn.addEventListener('click', async () => {
+        try {
+          await authManager.signInWithGoogle();
+        } catch (error) {
+          console.error('Sign-in error:', error);
+          // Could show an error message to user here
+        }
+      });
+    }
+
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', async () => {
+        try {
+          await authManager.signOut();
+        } catch (error) {
+          console.error('Sign-out error:', error);
+        }
+      });
+    }
+  }
+
+  /**
+   * Update the auth UI based on user state
+   * @param {Object|null} user - Firebase user object
+   */
+  updateAuthUI(user) {
+    const signInBtn = document.getElementById('sign-in-btn');
+    const userInfo = document.getElementById('user-info');
+    const userName = document.getElementById('user-name');
+    const userAvatar = document.getElementById('user-avatar');
+
+    if (user) {
+      // User is signed in
+      if (signInBtn) signInBtn.style.display = 'none';
+      if (userInfo) userInfo.classList.remove('hidden');
+      if (userName) userName.textContent = authManager.getDisplayName();
+      if (userAvatar) {
+        const photoURL = authManager.getPhotoURL();
+        if (photoURL) {
+          userAvatar.src = photoURL;
+          userAvatar.style.display = 'block';
+        } else {
+          userAvatar.style.display = 'none';
+        }
+      }
+
+      // Update stats manager with user ID for per-user stats
+      if (this.statsManager) {
+        // Could implement per-user stats storage here
+        console.log('User signed in:', user.uid);
+      }
+    } else {
+      // User is signed out
+      if (signInBtn) signInBtn.style.display = 'block';
+      if (userInfo) userInfo.classList.add('hidden');
+    }
   }
 
   /**
