@@ -74,3 +74,5 @@
 - [x] Add quantize control to snap pattern notes to grid
 - [x] Add in-browser functional test suite (30 tests)
 - [x] Apply visual refresh with design system colors (teal/magenta palette)
+- [x] Add drum kit selection (Classic Rock, Soul/Funk, TR-808, TR-909)
+- [x] Add audio dial controls for tone and room/reverb
