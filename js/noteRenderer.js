@@ -197,11 +197,13 @@ export class NoteRenderer {
    * Draw hit notes with X-offset based on timing accuracy
    * Notes that were hit early (rushing) appear further left
    * Notes that were hit late (dragging) appear closer to hit line
+   * Includes animation from correct to incorrect position
    * @param {Array} hitNotes - Array of hit notes with accuracy data
    * @param {number} currentTime - Current game time
    */
   drawHitNotesWithAccuracy(hitNotes, currentTime) {
     const maxVisibleTime = 2000; // Keep hit notes visible for 2 seconds after they pass
+    const animationDuration = 300; // Animation duration in ms
 
     hitNotes.forEach(note => {
       const noteInfo = MIDI_NOTE_MAP[note.midiNote];
@@ -218,10 +220,19 @@ export class NoteRenderer {
       // Don't draw if way off screen to the left
       if (baseX < -100) return;
 
-      // Apply accuracy offset: positive timeDiff (late) = note closer to hit line
-      // negative timeDiff (early) = note further from hit line
+      // Calculate accuracy offset
       const accuracyOffset = note.accuracy ? (note.accuracy.timeDiff || 0) * this.config.SCROLL_SPEED : 0;
-      const xPosition = baseX + accuracyOffset;
+
+      // Animate from correct position to incorrect position over animationDuration
+      let animatedOffset = accuracyOffset;
+      if (Math.abs(accuracyOffset) > 2) { // Only animate if there's a noticeable offset
+        const animProgress = Math.min(timeSinceHit / animationDuration, 1);
+        // Use ease-out cubic for smooth deceleration
+        const easedProgress = 1 - Math.pow(1 - animProgress, 3);
+        animatedOffset = accuracyOffset * easedProgress;
+      }
+
+      const xPosition = baseX + animatedOffset;
 
       // Calculate Y position based on lane
       const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
