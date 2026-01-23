@@ -77,8 +77,9 @@ export class AudioManager {
     const clickGain = this.audioContext.createGain();
 
     // Beat 1 is higher pitch and louder (accent)
+    // Increased accent ratio for more noticeable downbeat
     const frequency = beat === 1 ? 1200 : 800;
-    const volume = beat === 1 ? 0.8 : 0.5;
+    const volume = beat === 1 ? 1.0 : 0.4;
 
     oscillator.frequency.value = frequency;
     oscillator.type = 'sine';

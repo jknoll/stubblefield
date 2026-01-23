@@ -14,6 +14,88 @@ import { MIDI_NOTE_MAP } from './constants.js';
 import { StatsManager } from './statsManager.js';
 import { StatsGraph } from './statsGraph.js';
 import { authManager } from './authManager.js';
+import { Quantizer } from './quantizer.js';
+
+// Theme management
+const ThemeManager = {
+  storageKey: 'groovelab_theme',
+
+  init() {
+    // Check localStorage first, then system preference
+    const savedTheme = localStorage.getItem(this.storageKey);
+    if (savedTheme) {
+      this.setTheme(savedTheme);
+    } else {
+      // Use system preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      this.setTheme(prefersDark ? 'dark' : 'light');
+    }
+
+    // Listen for system preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem(this.storageKey)) {
+        this.setTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+
+    // Set up toggle button
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => this.toggle());
+    }
+  },
+
+  setTheme(theme) {
+    if (theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    this.updateToggleIcon(theme);
+    this.updateCanvasColors(theme);
+  },
+
+  toggle() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    this.setTheme(newTheme);
+    localStorage.setItem(this.storageKey, newTheme);
+  },
+
+  updateToggleIcon(theme) {
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+      toggleBtn.textContent = theme === 'light' ? '☀️' : '🌙';
+    }
+  },
+
+  updateCanvasColors(theme) {
+    // Update NoteRenderer colors and re-render if available
+    if (window.drumGame && window.drumGame.noteRenderer) {
+      window.drumGame.noteRenderer.updateTheme(theme);
+      // Re-render the game canvas with new colors
+      if (window.drumGame.gameState) {
+        window.drumGame.noteRenderer.render(window.drumGame.gameState);
+      }
+    }
+    // Update StatsGraph colors and trigger re-render if available
+    if (window.drumGame && window.drumGame.statsGraph) {
+      window.drumGame.statsGraph.updateTheme(theme);
+      // Re-render the stats graph with new colors
+      if (window.drumGame.statsManager) {
+        const graphData = window.drumGame.statsManager.getGraphData(
+          window.drumGame.currentPatternType,
+          window.drumGame.currentBPM
+        );
+        window.drumGame.statsGraph.render(graphData, { showHistorical: true });
+      }
+    }
+  },
+
+  getTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  }
+};
 
 class DrumGame {
   constructor() {
@@ -93,6 +175,18 @@ class DrumGame {
         this.updateStatsGraph();
       };
     }
+
+    // Initialize canvases with current theme
+    const currentTheme = ThemeManager.getTheme();
+    this.noteRenderer.updateTheme(currentTheme);
+    if (this.statsGraph) {
+      this.statsGraph.updateTheme(currentTheme);
+    }
+
+    // Set up mute callback on note renderer
+    this.noteRenderer.setMuteCallback((midiNote, isMuted) => {
+      console.log(`Mute toggled: MIDI ${midiNote} -> ${isMuted ? 'muted' : 'unmuted'}`);
+    });
 
     // Populate pattern dropdown with loaded patterns
     this.populatePatternDropdown();
@@ -321,9 +415,19 @@ class DrumGame {
       this.changeLoopCount(e.target.value);
     });
 
+    // Quantize button handler
+    const quantizeBtn = document.getElementById('quantize-btn');
+    if (quantizeBtn) {
+      quantizeBtn.addEventListener('click', () => {
+        this.quantizeCurrentPattern();
+      });
+    }
+
     // MIDI device selector handler
     document.getElementById('midi-device-select').addEventListener('change', (e) => {
       this.handleDeviceSelection(e.target.value);
+      // Update note renderer input mode
+      this.noteRenderer.setInputMode(e.target.value === 'keyboard');
     });
 
     // Debounce slider handler
@@ -409,12 +513,20 @@ class DrumGame {
     const noteInfo = MIDI_NOTE_MAP[midiNote];
     if (!noteInfo) return; // Unknown note
 
-    // Always play sound and show lane indicator (even when not playing)
-    this.playDrumHit(midiNote, velocity);
+    // Check if this instrument is muted
+    const isMuted = this.noteRenderer.isMuted(midiNote);
+
+    // Always play sound (unless muted) and show lane indicator (even when not playing)
+    if (!isMuted) {
+      this.playDrumHit(midiNote, velocity);
+    }
     this.showLaneIndicator(noteInfo.lane);
 
     // Only do scoring/judgment when game is playing
     if (!this.gameState.isPlaying) return;
+
+    // Skip scoring for muted instruments
+    if (isMuted) return;
 
     // Find matching note
     const matchingNote = this.timingJudge.findMatchingNote(
@@ -450,6 +562,9 @@ class DrumGame {
       };
       this.scoreManager.recordJudgment(judgment);
       this.showHitFeedback(judgment, noteInfo.lane);
+
+      // Record wrong pad hit for red dot visualization
+      this.gameState.recordWrongPadHit(midiNote, noteInfo.lane);
 
       console.log(`Wrong note or miss: ${midiNote}`);
     }
@@ -902,7 +1017,7 @@ class DrumGame {
   updateStatsGraph() {
     if (!this.statsGraph || !this.statsManager) return;
 
-    const graphData = this.statsManager.getGraphData(this.currentPatternType);
+    const graphData = this.statsManager.getGraphData(this.currentPatternType, this.currentBPM);
     this.statsGraph.render(graphData, { showHistorical: true });
 
     // Update pattern name display
@@ -912,18 +1027,18 @@ class DrumGame {
     const infoEl = document.getElementById('stats-session-info');
     if (infoEl) {
       const currentStats = this.statsManager.getCurrentSessionStats();
-      const patternStats = this.statsManager.getPatternStats(this.currentPatternType);
+      const patternStats = this.statsManager.getPatternStats(this.currentPatternType, this.currentBPM);
 
       if (currentStats && currentStats.loopResults.length > 0) {
         const lastLoop = currentStats.loopResults[currentStats.loopResults.length - 1];
-        infoEl.innerHTML = `Loop ${lastLoop.loopNumber}: <span class="trend-up">${lastLoop.accuracy.toFixed(1)}%</span> accuracy`;
+        infoEl.innerHTML = `Loop ${lastLoop.loopNumber}: <span class="trend-up">${lastLoop.accuracy.toFixed(1)}%</span> @ ${this.currentBPM} BPM`;
       } else if (patternStats && patternStats.sessions.length > 0) {
         const trend = patternStats.recentTrend;
         const trendClass = trend >= 0 ? 'trend-up' : 'trend-down';
         const trendSymbol = trend >= 0 ? '+' : '';
-        infoEl.innerHTML = `${patternStats.sessions.length} sessions | Trend: <span class="${trendClass}">${trendSymbol}${trend}%</span>`;
+        infoEl.innerHTML = `${patternStats.sessions.length} sessions @ ${this.currentBPM} BPM | Trend: <span class="${trendClass}">${trendSymbol}${trend}%</span>`;
       } else {
-        infoEl.textContent = 'Practice to see your progress';
+        infoEl.textContent = `Practice @ ${this.currentBPM} BPM to see progress`;
       }
     }
   }
@@ -1042,6 +1157,12 @@ class DrumGame {
       option.textContent = 'Keyboard (A/S/D/J/K/L)';
       deviceSelect.appendChild(option);
     }
+
+    // Update note renderer input mode based on current selection
+    const isKeyboardMode = deviceSelect.value === 'keyboard';
+    if (this.noteRenderer) {
+      this.noteRenderer.setInputMode(isKeyboardMode);
+    }
   }
 
   /**
@@ -1155,6 +1276,63 @@ class DrumGame {
   }
 
   /**
+   * Quantize the current pattern to snap notes to grid
+   */
+  quantizeCurrentPattern() {
+    // Don't quantize if game is playing
+    if (this.gameState && this.gameState.isPlaying) {
+      console.log('Cannot quantize while game is playing');
+      return;
+    }
+
+    if (!this.currentPattern || !this.currentPattern.notes || this.currentPattern.notes.length === 0) {
+      console.log('No pattern to quantize');
+      return;
+    }
+
+    // Analyze the pattern to find best grid
+    const analysis = Quantizer.analyzePattern(this.currentPattern.notes, this.currentBPM);
+    console.log(`Best grid: ${analysis.subdivision.name} (${analysis.confidence}% confidence, avg deviation: ${analysis.avgDeviation.toFixed(1)}ms)`);
+
+    // Quantize the notes
+    const quantizedNotes = Quantizer.quantizeNotes(
+      this.currentPattern.notes,
+      this.currentBPM,
+      analysis.subdivision
+    );
+
+    // Get summary of changes
+    const summary = Quantizer.getQuantizationSummary(this.currentPattern.notes, quantizedNotes);
+    console.log(`Quantization: ${summary.notesChanged}/${summary.totalNotes} notes moved, avg shift: ${summary.avgShift}ms`);
+
+    // Apply quantized notes to pattern
+    this.currentPattern.notes = quantizedNotes;
+
+    // Regenerate game state with quantized pattern
+    this.regenerateGameState();
+
+    // Show feedback to user
+    this.showQuantizeFeedback(analysis, summary);
+  }
+
+  /**
+   * Show visual feedback after quantization
+   * @param {Object} analysis - Analysis result
+   * @param {Object} summary - Quantization summary
+   */
+  showQuantizeFeedback(analysis, summary) {
+    // Use the hit feedback overlay for quick feedback
+    const feedback = document.getElementById('hit-feedback');
+    if (feedback) {
+      feedback.textContent = `Quantized to ${analysis.subdivision.name} grid`;
+      feedback.className = 'hit-feedback show';
+      setTimeout(() => {
+        feedback.className = 'hit-feedback';
+      }, 1500);
+    }
+  }
+
+  /**
    * Regenerate game state with current pattern
    */
   regenerateGameState() {
@@ -1196,6 +1374,10 @@ class DrumGame {
     };
 
     this.gameState.onMiss = (note) => {
+      // Skip scoring misses for muted instruments
+      if (this.noteRenderer.isMuted(note.midiNote)) {
+        return;
+      }
       this.scoreManager.recordMiss();
     };
 
@@ -1222,17 +1404,25 @@ class DrumGame {
     const padLightLeadTime = 100; // ms ahead to light pad (gives player visual cue)
 
     this.gameState.activeNotes.forEach(note => {
+      // Check if this instrument is muted
+      const isMuted = this.noteRenderer.isMuted(note.midiNote);
+
       // Check if this note should be playing now and hasn't been marked as sounded
       if (!note.sounded && Math.abs(note.time - currentTime) <= soundWindow) {
-        this.audioManager.playDrumSound(note.midiNote, note.velocity);
+        // Only play sound if not muted
+        if (!isMuted) {
+          this.audioManager.playDrumSound(note.midiNote, note.velocity);
+        }
         note.sounded = true; // Mark as sounded to prevent replaying
       }
 
-      // Trigger pad light slightly ahead of when note should be hit
+      // Trigger pad light slightly ahead of when note should be hit (even if muted, for visual reference)
       // Light the pad padLightLeadTime ms before the note time
       const timeUntilNote = note.time - currentTime;
       if (!note.padLit && timeUntilNote > 0 && timeUntilNote <= padLightLeadTime) {
-        this.triggerPadLight(note.midiNote);
+        if (!isMuted) {
+          this.triggerPadLight(note.midiNote);
+        }
         note.padLit = true;
       }
     });
@@ -1280,6 +1470,9 @@ class DrumGame {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
+  // Initialize theme before loading game
+  ThemeManager.init();
+
   const game = new DrumGame();
   await game.init();
 

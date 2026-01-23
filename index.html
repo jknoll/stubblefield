@@ -19,6 +19,8 @@
     <header>
       <h1>GrooveLab</h1>
       <div class="header-controls">
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" class="theme-toggle" title="Toggle light/dark mode">🌙</button>
         <!-- User Auth Status -->
         <div id="auth-status" class="auth-status">
           <button id="sign-in-btn" class="btn btn-auth">Sign In</button>
@@ -38,37 +40,32 @@
       </div>
     </header>
 
-    <!-- Metronome Section -->
-    <section class="metronome-container">
-      <canvas id="metronome-canvas" width="300" height="60"></canvas>
-      <div class="tempo-display">
-        <span id="bpm-display">120</span> BPM
-      </div>
-      <div class="bpm-controls">
+    <!-- Compact Controls Row -->
+    <section class="controls-row">
+      <canvas id="metronome-canvas" width="300" height="60" style="display: none;"></canvas>
+      <div class="tempo-control">
         <button id="bpm-down" class="bpm-btn">-</button>
-        <input type="range" id="bpm-slider" min="30" max="200" value="120" step="5">
+        <span class="tempo-display"><span id="bpm-display">120</span> BPM</span>
         <button id="bpm-up" class="bpm-btn">+</button>
       </div>
-      <div class="pattern-selector">
-        <label for="pattern-select">Pattern:</label>
-        <select id="pattern-select">
-          <option value="funkydrummer" selected>Funky Drummer (Intro Break)</option>
-          <option value="rock">Rock Beat</option>
-          <option value="house">House Beat (4-on-the-floor)</option>
-          <option value="hiphop">Hip-Hop Break</option>
-          <option value="amen">Amen Break</option>
-          <option value="funk">Funky Groove</option>
-        </select>
-        <label for="loop-count">Loops:</label>
-        <select id="loop-count">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="4" selected>4</option>
-          <option value="8">8</option>
-          <option value="16">16</option>
-          <option value="infinite">∞</option>
-        </select>
-      </div>
+      <input type="range" id="bpm-slider" min="30" max="200" value="120" step="5">
+      <select id="pattern-select">
+        <option value="funkydrummer" selected>Funky Drummer (Intro Break)</option>
+        <option value="rock">Rock Beat</option>
+        <option value="house">House Beat (4-on-the-floor)</option>
+        <option value="hiphop">Hip-Hop Break</option>
+        <option value="amen">Amen Break</option>
+        <option value="funk">Funky Groove</option>
+      </select>
+      <select id="loop-count">
+        <option value="1">1x</option>
+        <option value="2">2x</option>
+        <option value="4" selected>4x</option>
+        <option value="8">8x</option>
+        <option value="16">16x</option>
+        <option value="infinite">∞</option>
+      </select>
+      <button id="quantize-btn" class="btn btn-small" title="Snap pattern notes to grid">Quantize</button>
     </section>
 
     <!-- Game Canvas Section -->
@@ -82,49 +79,62 @@
       <div id="hit-feedback" class="hit-feedback"></div>
     </section>
 
-    <!-- Score Display Section -->
-    <section class="score-container">
-      <div class="score-card">
-        <div class="score-item">
-          <label>Score</label>
-          <span id="total-score" class="score-value">0</span>
-        </div>
-        <div class="score-item">
-          <label>Combo</label>
-          <span id="combo" class="score-value">0</span>
-        </div>
-        <div class="score-item">
-          <label>Accuracy</label>
-          <span id="accuracy" class="score-value">100%</span>
-        </div>
-      </div>
-
-      <!-- Judgment Breakdown -->
-      <div class="judgment-stats">
-        <div class="judgment-item">
-          <span class="judgment-label perfect">Perfect</span>
-          <span id="perfect-count">0</span>
-        </div>
-        <div class="judgment-item">
-          <span class="judgment-label good">Good</span>
-          <span id="good-count">0</span>
-        </div>
-        <div class="judgment-item">
-          <span class="judgment-label ok">OK</span>
-          <span id="ok-count">0</span>
-        </div>
-        <div class="judgment-item">
-          <span class="judgment-label miss">Miss</span>
-          <span id="miss-count">0</span>
-        </div>
-      </div>
-    </section>
-
     <!-- Control Section -->
     <section class="controls-container">
       <button id="game-btn" class="btn btn-primary">
         <span class="btn-icon">&#9658;</span> Start
       </button>
+    </section>
+
+    <!-- Combined Stats and Score Row -->
+    <section class="stats-score-row">
+      <!-- Progress Tracking (Left) -->
+      <div class="stats-panel">
+        <div class="stats-header">
+          <span id="stats-pattern-name" class="stats-pattern-name"></span>
+          <button id="clear-stats-btn" class="btn btn-small btn-danger" title="Clear history">Clear</button>
+        </div>
+        <canvas id="stats-canvas" width="400" height="150"></canvas>
+        <div class="stats-info">
+          <span id="stats-session-info">Practice to see your progress</span>
+        </div>
+      </div>
+
+      <!-- Score Display (Right) -->
+      <div class="score-panel">
+        <div class="score-card">
+          <div class="score-item">
+            <label>Score</label>
+            <span id="total-score" class="score-value">0</span>
+          </div>
+          <div class="score-item">
+            <label>Combo</label>
+            <span id="combo" class="score-value">0</span>
+          </div>
+          <div class="score-item">
+            <label>Accuracy</label>
+            <span id="accuracy" class="score-value">100%</span>
+          </div>
+        </div>
+        <div class="judgment-stats">
+          <div class="judgment-item">
+            <span class="judgment-label perfect">Perfect</span>
+            <span id="perfect-count">0</span>
+          </div>
+          <div class="judgment-item">
+            <span class="judgment-label good">Good</span>
+            <span id="good-count">0</span>
+          </div>
+          <div class="judgment-item">
+            <span class="judgment-label ok">OK</span>
+            <span id="ok-count">0</span>
+          </div>
+          <div class="judgment-item">
+            <span class="judgment-label miss">Miss</span>
+            <span id="miss-count">0</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Completion Panel -->
@@ -146,78 +156,26 @@
       </div>
     </section>
 
-    <!-- Progress Tracking Section -->
-    <section class="stats-container">
-      <div class="stats-header">
-        <h3>Progress Tracking</h3>
-        <span id="stats-pattern-name" class="stats-pattern-name"></span>
-        <button id="clear-stats-btn" class="btn btn-small btn-danger" title="Clear history for this pattern">Clear History</button>
+    <!-- Combined Settings Row -->
+    <section class="settings-row">
+      <div class="setting-group">
+        <label for="metronome-volume">Metronome</label>
+        <input type="range" id="metronome-volume" min="0" max="100" value="50" step="1">
+        <span id="metronome-volume-display">50%</span>
       </div>
-      <canvas id="stats-canvas" width="600" height="200"></canvas>
-      <div class="stats-info">
-        <span id="stats-session-info">Practice to see your progress</span>
+      <div class="setting-group">
+        <label for="drums-volume">Track</label>
+        <input type="range" id="drums-volume" min="0" max="100" value="70" step="1">
+        <span id="drums-volume-display">70%</span>
       </div>
-    </section>
-
-    <!-- Audio Mixer Section -->
-    <section class="mixer-container">
-      <h3>Audio Mixer</h3>
-      <div class="mixer-controls">
-        <div class="mixer-channel">
-          <label for="metronome-volume">Metronome</label>
-          <input type="range" id="metronome-volume" min="0" max="100" value="50" step="1">
-          <span id="metronome-volume-display">50%</span>
-        </div>
-        <div class="mixer-channel">
-          <label for="drums-volume">Practice Track</label>
-          <input type="range" id="drums-volume" min="0" max="100" value="70" step="1">
-          <span id="drums-volume-display">70%</span>
-        </div>
+      <div class="setting-group debounce-group">
+        <label for="debounce-slider">Filter</label>
+        <input type="range" id="debounce-slider" min="0" max="100" value="30" step="5">
+        <span id="debounce-display">30ms</span>
+        <span id="debounce-stats" class="debounce-stats"></span>
       </div>
     </section>
 
-    <!-- Input Settings Section -->
-    <section class="input-settings-container">
-      <h3>Input Settings</h3>
-      <div class="input-settings-controls">
-        <div class="input-setting">
-          <label for="debounce-slider">Double-Trigger Filter</label>
-          <p class="setting-description">Filter out rapid double-hits from unreliable hardware (kick pedals, etc.)</p>
-          <div class="slider-row">
-            <span class="slider-label">Off</span>
-            <input type="range" id="debounce-slider" min="0" max="100" value="30" step="5">
-            <span class="slider-label">100ms</span>
-          </div>
-          <div class="setting-value">
-            <span id="debounce-display">30ms</span>
-            <span id="debounce-stats" class="debounce-stats"></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Instructions Section -->
-    <section class="instructions-container">
-      <h3>Instructions</h3>
-      <ol>
-        <li>Connect a MIDI drum kit or use your keyboard</li>
-        <li>Click "Start" to begin the practice pattern</li>
-        <li>Hit the drums in time with the scrolling notes</li>
-        <li>Aim for "Perfect" timing to build your combo!</li>
-      </ol>
-
-      <div class="drum-mapping">
-        <h4>Controls</h4>
-        <ul>
-          <li><span class="drum-color" style="background: #FF4444;"></span> Kick - A key / MIDI 36</li>
-          <li><span class="drum-color" style="background: #44FF44;"></span> Snare - S key / MIDI 38</li>
-          <li><span class="drum-color" style="background: #4444FF;"></span> Hi-Hat Closed - K key / MIDI 42</li>
-          <li><span class="drum-color" style="background: #FFFF44;"></span> Hi-Hat Open - L key / MIDI 46</li>
-          <li><span class="drum-color" style="background: #FF44FF;"></span> Tom 1 - D key / MIDI 48</li>
-          <li><span class="drum-color" style="background: #44FFFF;"></span> Tom 2 - J key / MIDI 50</li>
-        </ul>
-      </div>
-    </section>
   </div>
 
   <!-- Firebase SDK (uncomment and configure to enable auth) -->

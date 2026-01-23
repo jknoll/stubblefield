@@ -37,6 +37,16 @@ export class StatsManager {
   }
 
   /**
+   * Generate a storage key for pattern+BPM combination
+   * @param {string} patternId - Pattern ID
+   * @param {number} bpm - BPM value
+   * @returns {string} Combined key
+   */
+  getPatternBpmKey(patternId, bpm) {
+    return `${patternId}_${bpm}`;
+  }
+
+  /**
    * Start a new practice session
    * @param {string} patternId - The pattern being practiced
    * @param {number} bpm - BPM setting
@@ -45,13 +55,17 @@ export class StatsManager {
     this.currentSession = {
       patternId,
       bpm,
+      patternBpmKey: this.getPatternBpmKey(patternId, bpm),
       startTime: Date.now(),
       loopResults: []  // Array of results per loop iteration
     };
 
-    // Initialize pattern stats if needed
-    if (!this.stats.patterns[patternId]) {
-      this.stats.patterns[patternId] = {
+    // Initialize pattern+BPM stats if needed
+    const key = this.currentSession.patternBpmKey;
+    if (!this.stats.patterns[key]) {
+      this.stats.patterns[key] = {
+        patternId,
+        bpm,
         sessions: []
       };
     }
@@ -113,11 +127,12 @@ export class StatsManager {
       loopResults: loopResults
     };
 
-    // Add to pattern's sessions
-    this.stats.patterns[this.currentSession.patternId].sessions.push(sessionSummary);
+    // Add to pattern+BPM's sessions
+    const key = this.currentSession.patternBpmKey;
+    this.stats.patterns[key].sessions.push(sessionSummary);
 
-    // Keep only last 50 sessions per pattern to avoid localStorage bloat
-    const patternStats = this.stats.patterns[this.currentSession.patternId];
+    // Keep only last 50 sessions per pattern+BPM to avoid localStorage bloat
+    const patternStats = this.stats.patterns[key];
     if (patternStats.sessions.length > 50) {
       patternStats.sessions = patternStats.sessions.slice(-50);
     }
@@ -144,15 +159,18 @@ export class StatsManager {
   }
 
   /**
-   * Get all stats for a specific pattern (for historical graph)
+   * Get all stats for a specific pattern+BPM combination (for historical graph)
    * @param {string} patternId - Pattern ID
+   * @param {number} bpm - BPM value
    */
-  getPatternStats(patternId) {
-    const patternStats = this.stats.patterns[patternId];
+  getPatternStats(patternId, bpm) {
+    const key = this.getPatternBpmKey(patternId, bpm);
+    const patternStats = this.stats.patterns[key];
     if (!patternStats) return null;
 
     return {
       patternId,
+      bpm,
       sessions: patternStats.sessions,
       // Calculate trends
       recentTrend: this.calculateTrend(patternStats.sessions.slice(-10))
@@ -174,19 +192,21 @@ export class StatsManager {
   /**
    * Get data formatted for line graph rendering
    * @param {string} patternId - Pattern ID
+   * @param {number} bpm - BPM value for filtering
    * @param {number} maxDataPoints - Maximum number of points to return
    */
-  getGraphData(patternId, maxDataPoints = 50) {
+  getGraphData(patternId, bpm, maxDataPoints = 50) {
     const currentStats = this.getCurrentSessionStats();
-    const historicalStats = this.getPatternStats(patternId);
+    const historicalStats = this.getPatternStats(patternId, bpm);
 
     const graphData = {
       currentSession: [],
-      historicalSessions: []
+      historicalSessions: [],
+      bpm: bpm
     };
 
-    // Current session data (real-time)
-    if (currentStats && currentStats.patternId === patternId) {
+    // Current session data (real-time) - only if matching pattern AND BPM
+    if (currentStats && currentStats.patternId === patternId && currentStats.bpm === bpm) {
       graphData.currentSession = currentStats.loopResults.map((r, i) => ({
         x: i + 1,
         y: r.accuracy,
@@ -195,7 +215,7 @@ export class StatsManager {
       }));
     }
 
-    // Historical data - aggregate by session
+    // Historical data - aggregate by session (already filtered by BPM via key)
     if (historicalStats && historicalStats.sessions.length > 0) {
       // Show last N sessions
       const recentSessions = historicalStats.sessions.slice(-maxDataPoints);

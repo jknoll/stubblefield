@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrooveLab Tests</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #4CAF50;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .test-summary {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .test-summary h2 {
+      margin-bottom: 15px;
+    }
+
+    .test-summary.all-passed {
+      border: 2px solid #4CAF50;
+    }
+
+    .test-summary.has-failures {
+      border: 2px solid #F44336;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      font-size: 18px;
+    }
+
+    .stats .passed {
+      color: #4CAF50;
+    }
+
+    .stats .failed {
+      color: #F44336;
+    }
+
+    .stats .rate {
+      color: #FFC107;
+      font-weight: bold;
+    }
+
+    .test-list {
+      background: #1a1a1a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .test-item {
+      padding: 12px 20px;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .test-item:last-child {
+      border-bottom: none;
+    }
+
+    .test-item.passed .status {
+      color: #4CAF50;
+    }
+
+    .test-item.failed .status {
+      color: #F44336;
+    }
+
+    .test-item .status {
+      font-size: 18px;
+      width: 24px;
+    }
+
+    .test-item .name {
+      flex: 1;
+    }
+
+    .test-item .duration {
+      color: #888;
+      font-size: 14px;
+    }
+
+    .test-item .error {
+      color: #F44336;
+      font-size: 12px;
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(244, 67, 54, 0.1);
+      border-radius: 4px;
+      width: 100%;
+    }
+
+    .test-item.failed {
+      flex-wrap: wrap;
+    }
+
+    #loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #333;
+      border-top-color: #4CAF50;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: #4CAF50;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .run-again {
+      display: block;
+      margin: 20px auto;
+      padding: 12px 24px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .run-again:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>GrooveLab Test Suite</h1>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Running tests...</p>
+  </div>
+
+  <div id="test-results"></div>
+
+  <button class="run-again" onclick="runTests()" style="display: none;">Run Tests Again</button>
+
+  <a href="index.html" class="back-link">Back to GrooveLab</a>
+
+  <script type="module">
+    import { runAllTests } from './js/tests/allTests.js';
+    import { initializeMidiLibrary } from './js/patterns.js';
+
+    window.runTests = async function() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('test-results').innerHTML = '';
+      document.querySelector('.run-again').style.display = 'none';
+
+      await runAllTests();
+
+      document.getElementById('loading').style.display = 'none';
+      document.querySelector('.run-again').style.display = 'block';
+    };
+
+    // Initialize MIDI library and run tests
+    async function init() {
+      try {
+        await initializeMidiLibrary();
+      } catch (e) {
+        console.log('MIDI library not available, running tests without it');
+      }
+      await window.runTests();
+    }
+
+    init();
+  </script>
+</body>
+</html>

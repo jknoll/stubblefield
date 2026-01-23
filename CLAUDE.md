@@ -16,6 +16,8 @@ node serve.js
 ```
 Then open `http://localhost:8080` in Chrome or Edge.
 
+**Note for Claude Code:** Use `run_in_background: true` parameter instead of appending `&` to run the server in background. This ensures proper permission handling.
+
 Alternatively, serve the project root with any static file server.
 
 ### Input Methods

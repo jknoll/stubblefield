@@ -5,18 +5,34 @@ export class StatsGraph {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
-    // Graph styling
-    this.colors = {
-      background: '#1a1a2e',
-      grid: '#333355',
-      currentLine: '#44FF44',
-      currentFill: 'rgba(68, 255, 68, 0.2)',
-      historicalLine: '#4488FF',
-      historicalFill: 'rgba(68, 136, 255, 0.15)',
-      axis: '#666688',
-      text: '#aaaacc',
-      highlight: '#FFFF44'
+    // Theme color palettes - matching design system
+    this.themeColors = {
+      dark: {
+        background: '#1e1e28',
+        grid: '#2e2e38',
+        currentLine: '#00d4aa',
+        currentFill: 'rgba(0, 212, 170, 0.2)',
+        historicalLine: '#00aaff',
+        historicalFill: 'rgba(0, 170, 255, 0.15)',
+        axis: '#606068',
+        text: '#9898a0',
+        highlight: '#ff3399'
+      },
+      light: {
+        background: '#f0f0f5',
+        grid: '#d8d8e0',
+        currentLine: '#00a080',
+        currentFill: 'rgba(0, 160, 128, 0.2)',
+        historicalLine: '#0088cc',
+        historicalFill: 'rgba(0, 136, 204, 0.15)',
+        axis: '#888890',
+        text: '#555560',
+        highlight: '#cc2277'
+      }
     };
+
+    // Current colors (start with dark theme)
+    this.colors = { ...this.themeColors.dark };
 
     // Padding
     this.padding = {
@@ -25,6 +41,15 @@ export class StatsGraph {
       top: 20,
       bottom: 30
     };
+  }
+
+  /**
+   * Update theme colors
+   * @param {string} theme - 'light' or 'dark'
+   */
+  updateTheme(theme) {
+    const palette = this.themeColors[theme] || this.themeColors.dark;
+    this.colors = { ...palette };
   }
 
   /**
@@ -69,8 +94,8 @@ export class StatsGraph {
       this.drawCurrentSessionLine(graphData.currentSession, graphWidth, graphHeight);
     }
 
-    // Draw legend
-    this.drawLegend(hasCurrentSession, hasHistorical);
+    // Draw legend with BPM indicator
+    this.drawLegend(hasCurrentSession, hasHistorical, graphData.bpm);
   }
 
   /**
@@ -144,17 +169,29 @@ export class StatsGraph {
 
     // Draw points
     points.forEach((p, i) => {
-      ctx.fillStyle = this.colors.currentLine;
+      const isLastPoint = i === points.length - 1;
+      const pointRadius = isLastPoint ? 6 : 4;
+
+      // Draw larger highlight ring around last point
+      if (isLastPoint) {
+        ctx.strokeStyle = this.colors.highlight;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = isLastPoint ? this.colors.highlight : this.colors.currentLine;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2);
       ctx.fill();
 
       // Draw accuracy label on last point
-      if (i === points.length - 1) {
+      if (isLastPoint) {
         ctx.fillStyle = this.colors.highlight;
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(`${p.accuracy.toFixed(1)}%`, p.x + 8, p.y - 4);
+        ctx.fillText(`${p.accuracy.toFixed(1)}%`, p.x + 14, p.y - 4);
       }
     });
 
@@ -219,7 +256,7 @@ export class StatsGraph {
   /**
    * Draw legend
    */
-  drawLegend(hasCurrentSession, hasHistorical) {
+  drawLegend(hasCurrentSession, hasHistorical, bpm = null) {
     const ctx = this.ctx;
     let x = this.canvas.width - this.padding.right - 10;
     const y = this.padding.top + 10;
@@ -227,17 +264,27 @@ export class StatsGraph {
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'right';
 
+    // Show BPM indicator if provided
+    if (bpm) {
+      ctx.fillStyle = this.colors.highlight;
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText(`${bpm} BPM`, x, y);
+    }
+
+    const bpmOffset = bpm ? 16 : 0;
+
     if (hasCurrentSession) {
       // Current session indicator
       ctx.fillStyle = this.colors.currentLine;
-      ctx.fillRect(x - 30, y - 5, 20, 3);
+      ctx.fillRect(x - 30, y + bpmOffset - 5, 20, 3);
       ctx.fillStyle = this.colors.text;
-      ctx.fillText('Current', x - 35, y);
+      ctx.font = '10px sans-serif';
+      ctx.fillText('Current', x - 35, y + bpmOffset);
     }
 
     if (hasHistorical) {
       // Historical indicator
-      const yOffset = hasCurrentSession ? 18 : 0;
+      const yOffset = (hasCurrentSession ? 18 : 0) + bpmOffset;
       ctx.strokeStyle = this.colors.historicalLine;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
