@@ -574,6 +574,11 @@ class DrumGame {
     this.inputDebouncer.reset();
     this.lastBeat = 0;
 
+    // Clear any active pad lights
+    if (this.midiHandler && this.midiHandler.hasOutputs()) {
+      this.midiHandler.clearAllPadLights();
+    }
+
     // Reset infinite loop tracking
     this.isInfiniteLoop = false;
     this.infiniteLoopIteration = 0;
@@ -1058,21 +1063,42 @@ class DrumGame {
   /**
    * Schedule drum sounds for practice track
    * Play sounds for notes at their scheduled time
+   * Also trigger pad lights slightly ahead of notes
    */
   scheduleNoteSounds() {
     if (!this.gameState.isPlaying || this.gameState.currentTime < 0) return;
 
     // Play sounds for notes that should be sounding now (within a small window)
     const currentTime = this.gameState.currentTime;
-    const window = 50; // ms tolerance
+    const soundWindow = 50; // ms tolerance for sound playback
+    const padLightLeadTime = 100; // ms ahead to light pad (gives player visual cue)
 
     this.gameState.activeNotes.forEach(note => {
       // Check if this note should be playing now and hasn't been marked as sounded
-      if (!note.sounded && Math.abs(note.time - currentTime) <= window) {
+      if (!note.sounded && Math.abs(note.time - currentTime) <= soundWindow) {
         this.audioManager.playDrumSound(note.midiNote, note.velocity);
         note.sounded = true; // Mark as sounded to prevent replaying
       }
+
+      // Trigger pad light slightly ahead of when note should be hit
+      // Light the pad padLightLeadTime ms before the note time
+      const timeUntilNote = note.time - currentTime;
+      if (!note.padLit && timeUntilNote > 0 && timeUntilNote <= padLightLeadTime) {
+        this.triggerPadLight(note.midiNote);
+        note.padLit = true;
+      }
     });
+  }
+
+  /**
+   * Trigger a pad light on the MIDI controller
+   * @param {number} midiNote - The MIDI note to light
+   */
+  triggerPadLight(midiNote) {
+    if (this.midiHandler && this.midiHandler.hasOutputs()) {
+      // Flash the pad for a brief moment
+      this.midiHandler.flashPad(midiNote, 200, 127);
+    }
   }
 
   /**

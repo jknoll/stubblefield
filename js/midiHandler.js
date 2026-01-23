@@ -4,10 +4,16 @@ export class MidiHandler {
   constructor() {
     this.midiAccess = null;
     this.allInputs = [];        // All available MIDI inputs
+    this.allOutputs = [];       // All available MIDI outputs
     this.activeInputs = [];      // Currently enabled inputs
     this.selectedDeviceId = null; // Currently selected device ID (null = all)
+    this.selectedOutputId = null; // Selected output device for pad lights
     this.onNoteCallback = null;
     this.onDeviceChangeCallback = null;
+
+    // Pad light state tracking
+    this.litPads = new Set();    // Currently lit pads
+    this.padLightEnabled = true; // Enable/disable pad light feature
   }
 
   /**
@@ -45,14 +51,16 @@ export class MidiHandler {
   }
 
   /**
-   * Update the list of active MIDI inputs
+   * Update the list of active MIDI inputs and outputs
    */
   updateInputs() {
     this.allInputs = [];
+    this.allOutputs = [];
     this.activeInputs = [];
 
     if (!this.midiAccess) return;
 
+    // Collect inputs
     const inputs = this.midiAccess.inputs.values();
     for (let input of inputs) {
       this.allInputs.push(input);
@@ -63,10 +71,21 @@ export class MidiHandler {
       };
     }
 
+    // Collect outputs (for pad lights)
+    const outputs = this.midiAccess.outputs.values();
+    for (let output of outputs) {
+      this.allOutputs.push(output);
+    }
+
     // Update active inputs based on selection
     this.applyDeviceSelection();
 
-    console.log(`Found ${this.allInputs.length} MIDI input(s)`);
+    // Auto-select first output for pad lights if none selected
+    if (!this.selectedOutputId && this.allOutputs.length > 0) {
+      this.selectedOutputId = this.allOutputs[0].id;
+    }
+
+    console.log(`Found ${this.allInputs.length} MIDI input(s), ${this.allOutputs.length} output(s)`);
   }
 
   /**
@@ -168,5 +187,150 @@ export class MidiHandler {
    */
   hasDevices() {
     return this.activeInputs.length > 0;
+  }
+
+  /**
+   * Get available MIDI output devices
+   * @returns {Array} Array of output device objects
+   */
+  getAvailableOutputs() {
+    return this.allOutputs.map(output => ({
+      id: output.id,
+      name: output.name,
+      manufacturer: output.manufacturer,
+      state: output.state
+    }));
+  }
+
+  /**
+   * Check if any MIDI outputs are available for pad lights
+   * @returns {boolean}
+   */
+  hasOutputs() {
+    return this.allOutputs.length > 0;
+  }
+
+  /**
+   * Select a MIDI output device for pad lights
+   * @param {string} outputId - Output device ID
+   */
+  selectOutput(outputId) {
+    this.selectedOutputId = outputId;
+    console.log(`Selected MIDI output: ${outputId}`);
+  }
+
+  /**
+   * Enable or disable pad light feature
+   * @param {boolean} enabled
+   */
+  setPadLightEnabled(enabled) {
+    this.padLightEnabled = enabled;
+    if (!enabled) {
+      this.clearAllPadLights();
+    }
+  }
+
+  /**
+   * Get the selected output device
+   * @returns {MIDIOutput|null}
+   */
+  getSelectedOutput() {
+    if (!this.selectedOutputId) return null;
+    return this.allOutputs.find(o => o.id === this.selectedOutputId) || null;
+  }
+
+  /**
+   * Light up a pad by sending MIDI Note On
+   * @param {number} midiNote - MIDI note number (e.g., 36 for kick)
+   * @param {number} velocity - Light intensity (1-127), default 127
+   */
+  lightPad(midiNote, velocity = 127) {
+    if (!this.padLightEnabled) return;
+
+    const output = this.getSelectedOutput();
+    if (!output) return;
+
+    // Note On message: 0x90 = channel 1 note on (or 0x99 for channel 10/drums)
+    // Using channel 1 (0x90) as many controllers respond to this
+    const noteOn = [0x90, midiNote, velocity];
+    output.send(noteOn);
+    this.litPads.add(midiNote);
+
+    console.log(`Pad light ON: note ${midiNote}, velocity ${velocity}`);
+  }
+
+  /**
+   * Turn off a pad light by sending Note Off
+   * @param {number} midiNote - MIDI note number
+   */
+  unlightPad(midiNote) {
+    if (!this.padLightEnabled) return;
+
+    const output = this.getSelectedOutput();
+    if (!output) return;
+
+    // Note Off message: 0x80 = channel 1 note off
+    // Alternatively, Note On with velocity 0
+    const noteOff = [0x80, midiNote, 0];
+    output.send(noteOff);
+    this.litPads.delete(midiNote);
+
+    console.log(`Pad light OFF: note ${midiNote}`);
+  }
+
+  /**
+   * Flash a pad light briefly
+   * @param {number} midiNote - MIDI note number
+   * @param {number} duration - Flash duration in ms (default 200)
+   * @param {number} velocity - Light intensity (default 127)
+   */
+  flashPad(midiNote, duration = 200, velocity = 127) {
+    this.lightPad(midiNote, velocity);
+    setTimeout(() => {
+      this.unlightPad(midiNote);
+    }, duration);
+  }
+
+  /**
+   * Clear all currently lit pads
+   */
+  clearAllPadLights() {
+    const output = this.getSelectedOutput();
+    if (!output) return;
+
+    // Send note off for all lit pads
+    for (const note of this.litPads) {
+      const noteOff = [0x80, note, 0];
+      output.send(noteOff);
+    }
+    this.litPads.clear();
+
+    console.log('All pad lights cleared');
+  }
+
+  /**
+   * Light multiple pads at once
+   * @param {Array<number>} midiNotes - Array of MIDI note numbers
+   * @param {number} velocity - Light intensity (default 127)
+   */
+  lightPads(midiNotes, velocity = 127) {
+    midiNotes.forEach(note => this.lightPad(note, velocity));
+  }
+
+  /**
+   * Schedule a pad light to turn on at a specific time
+   * @param {number} midiNote - MIDI note number
+   * @param {number} delay - Delay in ms from now
+   * @param {number} duration - How long to keep lit (0 = until manually turned off)
+   * @param {number} velocity - Light intensity
+   */
+  schedulePadLight(midiNote, delay, duration = 200, velocity = 127) {
+    setTimeout(() => {
+      if (duration > 0) {
+        this.flashPad(midiNote, duration, velocity);
+      } else {
+        this.lightPad(midiNote, velocity);
+      }
+    }, delay);
   }
 }
