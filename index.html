@@ -159,6 +159,29 @@
     <!-- Combined Settings Row -->
     <section class="settings-row">
       <div class="setting-group">
+        <label for="kit-select">Kit</label>
+        <select id="kit-select">
+          <option value="rock" selected>Classic Rock</option>
+          <option value="funk">Soul/Funk</option>
+          <option value="tr808">TR-808</option>
+          <option value="tr909">TR-909</option>
+        </select>
+      </div>
+      <div class="setting-group dial-group">
+        <label for="tone-dial">Tone</label>
+        <div class="dial-container">
+          <input type="range" id="tone-dial" class="dial" min="0" max="100" value="50" step="1">
+          <span class="dial-label" id="tone-display">50%</span>
+        </div>
+      </div>
+      <div class="setting-group dial-group">
+        <label for="reverb-dial">Room</label>
+        <div class="dial-container">
+          <input type="range" id="reverb-dial" class="dial" min="0" max="100" value="0" step="1">
+          <span class="dial-label" id="reverb-display">0%</span>
+        </div>
+      </div>
+      <div class="setting-group">
         <label for="metronome-volume">Metronome</label>
         <input type="range" id="metronome-volume" min="0" max="100" value="50" step="1">
         <span id="metronome-volume-display">50%</span>

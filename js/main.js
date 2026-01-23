@@ -405,6 +405,42 @@ class DrumGame {
       document.getElementById('drums-volume-display').textContent = `${e.target.value}%`;
     });
 
+    // Kit selector handler
+    const kitSelect = document.getElementById('kit-select');
+    if (kitSelect) {
+      kitSelect.addEventListener('change', (e) => {
+        this.audioManager.setKit(e.target.value);
+      });
+    }
+
+    // Tone dial handler
+    const toneDial = document.getElementById('tone-dial');
+    if (toneDial) {
+      toneDial.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value) / 100;
+        this.audioManager.setTone(value);
+        document.getElementById('tone-display').textContent = `${e.target.value}%`;
+        // Update CSS custom property for dial visual
+        toneDial.style.setProperty('--dial-value', e.target.value);
+      });
+      // Set initial CSS variable
+      toneDial.style.setProperty('--dial-value', toneDial.value);
+    }
+
+    // Reverb dial handler
+    const reverbDial = document.getElementById('reverb-dial');
+    if (reverbDial) {
+      reverbDial.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value) / 100;
+        this.audioManager.setReverb(value);
+        document.getElementById('reverb-display').textContent = `${e.target.value}%`;
+        // Update CSS custom property for dial visual
+        reverbDial.style.setProperty('--dial-value', e.target.value);
+      });
+      // Set initial CSS variable
+      reverbDial.style.setProperty('--dial-value', reverbDial.value);
+    }
+
     // Pattern selector handler
     document.getElementById('pattern-select').addEventListener('change', (e) => {
       this.changePattern(e.target.value);

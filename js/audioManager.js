@@ -2,6 +2,38 @@
 
 import { MIDI_NOTE_MAP } from './constants.js';
 
+// Drum kit presets with synthesis parameters
+const DRUM_KITS = {
+  rock: {
+    name: 'Classic Rock',
+    kick: { startFreq: 150, endFreq: 40, decay: 0.3 },
+    snare: { toneFreq: 200, toneDecay: 0.15, noiseDecay: 0.15, noiseFilter: 1000 },
+    hihat: { filterFreq: 7000, closedDecay: 0.05, openDecay: 0.3 },
+    tom: { startFreq: 200, endFreq: 80, decay: 0.3 }
+  },
+  funk: {
+    name: 'Soul/Funk',
+    kick: { startFreq: 120, endFreq: 45, decay: 0.2 },
+    snare: { toneFreq: 180, toneDecay: 0.1, noiseDecay: 0.12, noiseFilter: 1200 },
+    hihat: { filterFreq: 8000, closedDecay: 0.03, openDecay: 0.2 },
+    tom: { startFreq: 180, endFreq: 90, decay: 0.25 }
+  },
+  tr808: {
+    name: 'TR-808',
+    kick: { startFreq: 60, endFreq: 30, decay: 0.8 },
+    snare: { toneFreq: 150, toneDecay: 0.2, noiseDecay: 0.25, noiseFilter: 800 },
+    hihat: { filterFreq: 9000, closedDecay: 0.04, openDecay: 0.4 },
+    tom: { startFreq: 120, endFreq: 50, decay: 0.5 }
+  },
+  tr909: {
+    name: 'TR-909',
+    kick: { startFreq: 180, endFreq: 35, decay: 0.25 },
+    snare: { toneFreq: 220, toneDecay: 0.12, noiseDecay: 0.18, noiseFilter: 1500 },
+    hihat: { filterFreq: 10000, closedDecay: 0.035, openDecay: 0.25 },
+    tom: { startFreq: 250, endFreq: 70, decay: 0.35 }
+  }
+};
+
 export class AudioManager {
   constructor() {
     this.audioContext = null;
@@ -10,10 +42,30 @@ export class AudioManager {
     this.trackPanner = null;  // Panner for MIDI track playback (left)
     this.userPanner = null;   // Panner for user input (right)
 
+    // Audio effects
+    this.reverbGain = null;
+    this.reverbConvolver = null;
+    this.toneFilter = null;
+    this.dryGain = null;
+    this.wetGain = null;
+
     this.metronomeVolume = 0.5;
     this.drumsVolume = 0.7;
+    this.toneValue = 0.5;    // 0-1 for tone control
+    this.reverbValue = 0;    // 0-1 for reverb mix
 
+    this.currentKit = 'rock';
     this.initialized = false;
+  }
+
+  /**
+   * Get available drum kits
+   */
+  static getKits() {
+    return Object.entries(DRUM_KITS).map(([id, kit]) => ({
+      id,
+      name: kit.name
+    }));
   }
 
   /**
@@ -32,17 +84,39 @@ export class AudioManager {
       this.drumsGain = this.audioContext.createGain();
       this.drumsGain.gain.value = this.drumsVolume;
 
+      // Create tone filter (lowpass for darker tone, bypass for brighter)
+      this.toneFilter = this.audioContext.createBiquadFilter();
+      this.toneFilter.type = 'lowpass';
+      this.updateToneFilter();
+
+      // Create reverb using convolver with generated impulse response
+      await this.createReverb();
+
+      // Create dry/wet mix for reverb
+      this.dryGain = this.audioContext.createGain();
+      this.wetGain = this.audioContext.createGain();
+      this.updateReverbMix();
+
       // Create stereo panners for track (left) and user input (right)
       this.trackPanner = this.audioContext.createStereoPanner();
       this.trackPanner.pan.value = -1;  // Hard left
-      // Route track panner through drums gain so volume slider controls it
-      this.trackPanner.connect(this.drumsGain);
+      // Route: trackPanner -> toneFilter -> dryGain/wetGain -> drumsGain
+      this.trackPanner.connect(this.toneFilter);
 
       this.userPanner = this.audioContext.createStereoPanner();
       this.userPanner.pan.value = 1;   // Hard right
-      this.userPanner.connect(this.audioContext.destination);
+      this.userPanner.connect(this.toneFilter);
 
-      // Connect drums gain to destination (practice track routes through this)
+      // Tone filter splits to dry and wet paths
+      this.toneFilter.connect(this.dryGain);
+      this.toneFilter.connect(this.reverbConvolver);
+      this.reverbConvolver.connect(this.wetGain);
+
+      // Both dry and wet connect to drums gain
+      this.dryGain.connect(this.drumsGain);
+      this.wetGain.connect(this.drumsGain);
+
+      // Connect drums gain to destination
       this.drumsGain.connect(this.audioContext.destination);
 
       this.initialized = true;
@@ -52,6 +126,47 @@ export class AudioManager {
       console.error('Failed to initialize Web Audio API:', error);
       return false;
     }
+  }
+
+  /**
+   * Create reverb impulse response
+   */
+  async createReverb() {
+    const sampleRate = this.audioContext.sampleRate;
+    const length = sampleRate * 1.5; // 1.5 second reverb
+    const impulse = this.audioContext.createBuffer(2, length, sampleRate);
+
+    for (let channel = 0; channel < 2; channel++) {
+      const channelData = impulse.getChannelData(channel);
+      for (let i = 0; i < length; i++) {
+        // Exponential decay with some randomness for natural sound
+        channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
+      }
+    }
+
+    this.reverbConvolver = this.audioContext.createConvolver();
+    this.reverbConvolver.buffer = impulse;
+  }
+
+  /**
+   * Update tone filter based on tone value
+   */
+  updateToneFilter() {
+    if (!this.toneFilter) return;
+    // Map 0-1 to 1000Hz-20000Hz (darker to brighter)
+    const minFreq = 1000;
+    const maxFreq = 20000;
+    this.toneFilter.frequency.value = minFreq + (this.toneValue * (maxFreq - minFreq));
+  }
+
+  /**
+   * Update reverb dry/wet mix
+   */
+  updateReverbMix() {
+    if (!this.dryGain || !this.wetGain) return;
+    // Crossfade between dry and wet
+    this.dryGain.gain.value = 1 - (this.reverbValue * 0.5);
+    this.wetGain.gain.value = this.reverbValue;
   }
 
   /**
@@ -160,43 +275,49 @@ export class AudioManager {
    * Synthesize kick drum sound
    */
   playKick(time, velocity, destination) {
+    const kit = DRUM_KITS[this.currentKit];
+    const params = kit.kick;
+
     const osc = this.audioContext.createOscillator();
     const gain = this.audioContext.createGain();
 
-    // Pitch envelope: starts at 150Hz, drops to 40Hz
-    osc.frequency.setValueAtTime(150, time);
-    osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+    // Pitch envelope using kit parameters
+    osc.frequency.setValueAtTime(params.startFreq, time);
+    osc.frequency.exponentialRampToValueAtTime(params.endFreq, time + 0.1);
 
     // Amplitude envelope
     gain.gain.setValueAtTime(velocity, time);
-    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.01, time + params.decay);
 
     osc.connect(gain);
     gain.connect(destination);
 
     osc.start(time);
-    osc.stop(time + 0.3);
+    osc.stop(time + params.decay);
   }
 
   /**
    * Synthesize snare drum sound
    */
   playSnare(time, velocity, destination) {
+    const kit = DRUM_KITS[this.currentKit];
+    const params = kit.snare;
+
     // Tone component
     const osc = this.audioContext.createOscillator();
     const oscGain = this.audioContext.createGain();
 
-    osc.frequency.setValueAtTime(200, time);
-    osc.frequency.exponentialRampToValueAtTime(100, time + 0.1);
+    osc.frequency.setValueAtTime(params.toneFreq, time);
+    osc.frequency.exponentialRampToValueAtTime(params.toneFreq * 0.5, time + 0.1);
 
     oscGain.gain.setValueAtTime(velocity * 0.3, time);
-    oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+    oscGain.gain.exponentialRampToValueAtTime(0.01, time + params.toneDecay);
 
     osc.connect(oscGain);
     oscGain.connect(destination);
 
     // Noise component
-    const bufferSize = this.audioContext.sampleRate * 0.15;
+    const bufferSize = this.audioContext.sampleRate * params.noiseDecay;
     const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
     const data = buffer.getChannelData(0);
 
@@ -210,17 +331,17 @@ export class AudioManager {
 
     noise.buffer = buffer;
     noiseFilter.type = 'highpass';
-    noiseFilter.frequency.value = 1000;
+    noiseFilter.frequency.value = params.noiseFilter;
 
     noiseGain.gain.setValueAtTime(velocity * 0.7, time);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, time + params.noiseDecay);
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
     noiseGain.connect(destination);
 
     osc.start(time);
-    osc.stop(time + 0.15);
+    osc.stop(time + params.toneDecay);
     noise.start(time);
   }
 
@@ -228,7 +349,11 @@ export class AudioManager {
    * Synthesize hi-hat sound
    */
   playHiHat(time, velocity, isOpen, destination) {
-    const bufferSize = this.audioContext.sampleRate * (isOpen ? 0.3 : 0.05);
+    const kit = DRUM_KITS[this.currentKit];
+    const params = kit.hihat;
+
+    const duration = isOpen ? params.openDecay : params.closedDecay;
+    const bufferSize = this.audioContext.sampleRate * duration;
     const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
     const data = buffer.getChannelData(0);
 
@@ -242,9 +367,8 @@ export class AudioManager {
 
     noise.buffer = buffer;
     filter.type = 'highpass';
-    filter.frequency.value = 7000;
+    filter.frequency.value = params.filterFreq;
 
-    const duration = isOpen ? 0.3 : 0.05;
     gain.gain.setValueAtTime(velocity * 0.5, time);
     gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
 
@@ -259,20 +383,75 @@ export class AudioManager {
    * Synthesize tom sound
    */
   playTom(time, velocity, destination) {
+    const kit = DRUM_KITS[this.currentKit];
+    const params = kit.tom;
+
     const osc = this.audioContext.createOscillator();
     const gain = this.audioContext.createGain();
 
-    osc.frequency.setValueAtTime(200, time);
-    osc.frequency.exponentialRampToValueAtTime(80, time + 0.2);
+    osc.frequency.setValueAtTime(params.startFreq, time);
+    osc.frequency.exponentialRampToValueAtTime(params.endFreq, time + 0.2);
 
     gain.gain.setValueAtTime(velocity, time);
-    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.01, time + params.decay);
 
     osc.connect(gain);
     gain.connect(destination);
 
     osc.start(time);
-    osc.stop(time + 0.3);
+    osc.stop(time + params.decay);
+  }
+
+  /**
+   * Set current drum kit
+   * @param {string} kitId - Kit identifier (rock, funk, tr808, tr909)
+   */
+  setKit(kitId) {
+    if (DRUM_KITS[kitId]) {
+      this.currentKit = kitId;
+    }
+  }
+
+  /**
+   * Get current drum kit
+   * @returns {string} Current kit identifier
+   */
+  getKit() {
+    return this.currentKit;
+  }
+
+  /**
+   * Set tone control (brightness)
+   * @param {number} value - 0-1 (darker to brighter)
+   */
+  setTone(value) {
+    this.toneValue = Math.max(0, Math.min(1, value));
+    this.updateToneFilter();
+  }
+
+  /**
+   * Get tone value
+   * @returns {number} Tone value 0-1
+   */
+  getTone() {
+    return this.toneValue;
+  }
+
+  /**
+   * Set reverb amount
+   * @param {number} value - 0-1 (dry to wet)
+   */
+  setReverb(value) {
+    this.reverbValue = Math.max(0, Math.min(1, value));
+    this.updateReverbMix();
+  }
+
+  /**
+   * Get reverb value
+   * @returns {number} Reverb value 0-1
+   */
+  getReverb() {
+    return this.reverbValue;
   }
 
   /**
