@@ -19,6 +19,7 @@ export class GameState {
     this.activeNotes = [];                   // Notes currently on screen
     this.hitNotes = [];                      // Notes already hit
     this.missedNotes = [];                   // Notes that passed without hit
+    this.wrongPadHits = [];                  // Wrong pad hits for visual feedback
 
     // Frame timing
     this.lastFrameTime = 0;
@@ -198,6 +199,20 @@ export class GameState {
     }
 
     this.hitNotes.push(note);
+  }
+
+  /**
+   * Record a wrong pad hit for visual feedback
+   * @param {number} midiNote - The MIDI note that was hit
+   * @param {number} lane - The lane of the hit pad
+   */
+  recordWrongPadHit(midiNote, lane) {
+    this.wrongPadHits.push({
+      time: this.currentTime,
+      midiNote,
+      lane,
+      timestamp: performance.now()
+    });
   }
 
   /**
@@ -431,6 +446,7 @@ export class GameState {
     this.activeNotes = [];
     this.hitNotes = [];
     this.missedNotes = [];
+    this.wrongPadHits = [];
 
     console.log('Game reset');
   }

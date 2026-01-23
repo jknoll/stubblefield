@@ -186,6 +186,9 @@ export class NoteRenderer {
     // Draw missed notes (faded, at their actual position on left side)
     this.drawMissedNotes(gameState.missedNotes, gameState.currentTime);
 
+    // Draw wrong pad hit indicators (small red dots)
+    this.drawWrongPadHits(gameState.wrongPadHits, gameState.currentTime);
+
     // Draw recent hit effects
     this.drawHitEffects(gameState.currentTime);
   }
@@ -323,6 +326,61 @@ export class NoteRenderer {
       this.ctx.lineTo(centerX + markSize, centerY + markSize);
       this.ctx.moveTo(centerX + markSize, centerY - markSize);
       this.ctx.lineTo(centerX - markSize, centerY + markSize);
+      this.ctx.stroke();
+
+      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = 1.0;
+    });
+  }
+
+  /**
+   * Draw wrong pad hit indicators (small red dots)
+   * @param {Array} wrongPadHits - Array of wrong pad hit records
+   * @param {number} currentTime - Current game time
+   */
+  drawWrongPadHits(wrongPadHits, currentTime) {
+    const maxVisibleTime = 1500; // Keep visible for 1.5 seconds
+    const now = performance.now();
+
+    wrongPadHits.forEach(hit => {
+      const timeSinceHit = now - hit.timestamp;
+
+      // Only show hits that haven't faded out yet
+      if (timeSinceHit > maxVisibleTime) return;
+
+      // Calculate X position based on when the wrong hit occurred
+      const xPosition = this.calculateXPosition(hit.time, currentTime);
+
+      // Don't draw if way off screen
+      if (xPosition < -20 || xPosition > this.canvas.width + 20) return;
+
+      // Calculate Y position based on lane
+      const yPosition = hit.lane * this.config.LANE_HEIGHT + this.config.LANE_HEIGHT / 2;
+
+      // Fade out gradually
+      const fadeProgress = Math.min(timeSinceHit / maxVisibleTime, 1);
+      const alpha = 1 - (fadeProgress * 0.8); // Fade to 20% opacity
+
+      // Draw red dot
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = '#FF4444';
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowColor = '#FF4444';
+
+      const dotRadius = 8;
+      this.ctx.beginPath();
+      this.ctx.arc(xPosition, yPosition, dotRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Draw X mark inside the dot
+      this.ctx.strokeStyle = '#FFFFFF';
+      this.ctx.lineWidth = 2;
+      const markSize = 4;
+      this.ctx.beginPath();
+      this.ctx.moveTo(xPosition - markSize, yPosition - markSize);
+      this.ctx.lineTo(xPosition + markSize, yPosition + markSize);
+      this.ctx.moveTo(xPosition + markSize, yPosition - markSize);
+      this.ctx.lineTo(xPosition - markSize, yPosition + markSize);
       this.ctx.stroke();
 
       this.ctx.shadowBlur = 0;

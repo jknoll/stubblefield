@@ -466,6 +466,9 @@ class DrumGame {
       this.scoreManager.recordJudgment(judgment);
       this.showHitFeedback(judgment, noteInfo.lane);
 
+      // Record wrong pad hit for red dot visualization
+      this.gameState.recordWrongPadHit(midiNote, noteInfo.lane);
+
       console.log(`Wrong note or miss: ${midiNote}`);
     }
   }
