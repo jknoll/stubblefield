@@ -14,6 +14,7 @@ import { MIDI_NOTE_MAP } from './constants.js';
 import { StatsManager } from './statsManager.js';
 import { StatsGraph } from './statsGraph.js';
 import { authManager } from './authManager.js';
+import { Quantizer } from './quantizer.js';
 
 // Theme management
 const ThemeManager = {
@@ -413,6 +414,14 @@ class DrumGame {
     document.getElementById('loop-count').addEventListener('change', (e) => {
       this.changeLoopCount(e.target.value);
     });
+
+    // Quantize button handler
+    const quantizeBtn = document.getElementById('quantize-btn');
+    if (quantizeBtn) {
+      quantizeBtn.addEventListener('click', () => {
+        this.quantizeCurrentPattern();
+      });
+    }
 
     // MIDI device selector handler
     document.getElementById('midi-device-select').addEventListener('change', (e) => {
@@ -1264,6 +1273,63 @@ class DrumGame {
     this.updateStatsGraph();
 
     console.log(`Pattern changed to ${patternInfo.name} at ${this.currentBPM} BPM`);
+  }
+
+  /**
+   * Quantize the current pattern to snap notes to grid
+   */
+  quantizeCurrentPattern() {
+    // Don't quantize if game is playing
+    if (this.gameState && this.gameState.isPlaying) {
+      console.log('Cannot quantize while game is playing');
+      return;
+    }
+
+    if (!this.currentPattern || !this.currentPattern.notes || this.currentPattern.notes.length === 0) {
+      console.log('No pattern to quantize');
+      return;
+    }
+
+    // Analyze the pattern to find best grid
+    const analysis = Quantizer.analyzePattern(this.currentPattern.notes, this.currentBPM);
+    console.log(`Best grid: ${analysis.subdivision.name} (${analysis.confidence}% confidence, avg deviation: ${analysis.avgDeviation.toFixed(1)}ms)`);
+
+    // Quantize the notes
+    const quantizedNotes = Quantizer.quantizeNotes(
+      this.currentPattern.notes,
+      this.currentBPM,
+      analysis.subdivision
+    );
+
+    // Get summary of changes
+    const summary = Quantizer.getQuantizationSummary(this.currentPattern.notes, quantizedNotes);
+    console.log(`Quantization: ${summary.notesChanged}/${summary.totalNotes} notes moved, avg shift: ${summary.avgShift}ms`);
+
+    // Apply quantized notes to pattern
+    this.currentPattern.notes = quantizedNotes;
+
+    // Regenerate game state with quantized pattern
+    this.regenerateGameState();
+
+    // Show feedback to user
+    this.showQuantizeFeedback(analysis, summary);
+  }
+
+  /**
+   * Show visual feedback after quantization
+   * @param {Object} analysis - Analysis result
+   * @param {Object} summary - Quantization summary
+   */
+  showQuantizeFeedback(analysis, summary) {
+    // Use the hit feedback overlay for quick feedback
+    const feedback = document.getElementById('hit-feedback');
+    if (feedback) {
+      feedback.textContent = `Quantized to ${analysis.subdivision.name} grid`;
+      feedback.className = 'hit-feedback show';
+      setTimeout(() => {
+        feedback.className = 'hit-feedback';
+      }, 1500);
+    }
   }
 
   /**
