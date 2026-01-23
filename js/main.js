@@ -324,6 +324,8 @@ class DrumGame {
     // MIDI device selector handler
     document.getElementById('midi-device-select').addEventListener('change', (e) => {
       this.handleDeviceSelection(e.target.value);
+      // Update note renderer input mode
+      this.noteRenderer.setInputMode(e.target.value === 'keyboard');
     });
 
     // Debounce slider handler
@@ -1041,6 +1043,12 @@ class DrumGame {
       option.value = 'keyboard';
       option.textContent = 'Keyboard (A/S/D/J/K/L)';
       deviceSelect.appendChild(option);
+    }
+
+    // Update note renderer input mode based on current selection
+    const isKeyboardMode = deviceSelect.value === 'keyboard';
+    if (this.noteRenderer) {
+      this.noteRenderer.setInputMode(isKeyboardMode);
     }
   }
 

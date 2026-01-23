@@ -1,6 +1,6 @@
 // Canvas-based note renderer (horizontal layout - notes flow right to left)
 
-import { GAME_CONFIG, MIDI_NOTE_MAP } from './constants.js';
+import { GAME_CONFIG, MIDI_NOTE_MAP, MIDI_TO_KEY } from './constants.js';
 
 export class NoteRenderer {
   constructor(canvasElement) {
@@ -17,7 +17,43 @@ export class NoteRenderer {
     // Flag to prevent rendering over completion view
     this.showingCompletionView = false;
 
+    // Input mode tracking for displaying keyboard labels
+    this.isKeyboardMode = true; // Default to keyboard mode
+
+    // Hover state for tooltips
+    this.hoveredLane = null;
+
     this.setupCanvas();
+    this.setupMouseEvents();
+  }
+
+  /**
+   * Set up mouse events for lane hover tooltips
+   */
+  setupMouseEvents() {
+    this.canvas.addEventListener('mousemove', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const lane = Math.floor(y / this.config.LANE_HEIGHT);
+
+      if (lane >= 0 && lane < Object.keys(MIDI_NOTE_MAP).length) {
+        this.hoveredLane = lane;
+      } else {
+        this.hoveredLane = null;
+      }
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      this.hoveredLane = null;
+    });
+  }
+
+  /**
+   * Set the input mode (keyboard or MIDI)
+   * @param {boolean} isKeyboard - True if using keyboard input
+   */
+  setInputMode(isKeyboard) {
+    this.isKeyboardMode = isKeyboard;
   }
 
   /**
@@ -241,6 +277,7 @@ export class NoteRenderer {
 
   /**
    * Draw horizontal lane dividers and labels on left side
+   * Shows keyboard key labels when in keyboard mode
    */
   drawLanes() {
     const laneCount = Object.keys(MIDI_NOTE_MAP).length;
@@ -258,16 +295,37 @@ export class NoteRenderer {
     }
 
     // Draw lane labels on the left side
-    this.ctx.fillStyle = '#888';
-    this.ctx.font = '11px Arial';
     this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'middle';
 
     Object.entries(MIDI_NOTE_MAP).forEach(([midiNote, info]) => {
       const y = info.lane * this.config.LANE_HEIGHT + this.config.LANE_HEIGHT / 2;
       const x = 8;
+      const isHovered = this.hoveredLane === info.lane;
 
-      this.ctx.fillText(info.name, x, y);
+      // Draw drum name
+      this.ctx.fillStyle = isHovered ? '#FFF' : '#888';
+      this.ctx.font = isHovered ? 'bold 11px Arial' : '11px Arial';
+      this.ctx.fillText(info.name, x, y - (this.isKeyboardMode ? 8 : 0));
+
+      // Show keyboard key when in keyboard mode
+      if (this.isKeyboardMode) {
+        const keyName = MIDI_TO_KEY[midiNote];
+        if (keyName) {
+          // Draw key in a small box
+          this.ctx.fillStyle = info.color;
+          this.ctx.font = 'bold 12px Arial';
+          this.ctx.fillText(keyName, x, y + 10);
+        }
+      }
+
+      // Show MIDI note number tooltip on hover
+      if (isHovered) {
+        const tooltipText = `MIDI ${midiNote}`;
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.font = '10px Arial';
+        this.ctx.fillText(tooltipText, x + 55, y);
+      }
     });
   }
 
