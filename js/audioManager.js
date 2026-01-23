@@ -35,13 +35,14 @@ export class AudioManager {
       // Create stereo panners for track (left) and user input (right)
       this.trackPanner = this.audioContext.createStereoPanner();
       this.trackPanner.pan.value = -1;  // Hard left
-      this.trackPanner.connect(this.audioContext.destination);
+      // Route track panner through drums gain so volume slider controls it
+      this.trackPanner.connect(this.drumsGain);
 
       this.userPanner = this.audioContext.createStereoPanner();
       this.userPanner.pan.value = 1;   // Hard right
       this.userPanner.connect(this.audioContext.destination);
 
-      // Connect drums gain to both panners (will be used selectively)
+      // Connect drums gain to destination (practice track routes through this)
       this.drumsGain.connect(this.audioContext.destination);
 
       this.initialized = true;

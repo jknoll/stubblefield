@@ -484,11 +484,8 @@ export class NoteRenderer {
       // Get accuracy-based color
       const color = this.getAccuracyColor(note.accuracy);
 
-      // Calculate note width to match playback proportions
-      // During playback: NOTE_WIDTH pixels spans (NOTE_WIDTH / SCROLL_SPEED) ms
-      // In completion view: use same time duration scaled by timeScale
-      const playbackNoteTimeSpan = this.config.NOTE_WIDTH / this.config.SCROLL_SPEED;
-      const noteWidth = Math.max(4, playbackNoteTimeSpan * timeScale);
+      // Use fixed note width matching playback (notes are point-in-time events)
+      const noteWidth = this.baseConfig.NOTE_WIDTH;
 
       // Draw note rectangle with glow
       this.ctx.fillStyle = color;
