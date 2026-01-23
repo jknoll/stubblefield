@@ -74,6 +74,9 @@ export class NoteRenderer {
     // Draw lane dividers
     this.drawLanes();
 
+    // Draw pattern boundary lines (before notes so notes appear on top)
+    this.drawPatternBoundaries(gameState);
+
     // Draw hit line
     this.drawHitLine();
 
@@ -287,6 +290,48 @@ export class NoteRenderer {
 
     // Reset shadow
     this.ctx.shadowBlur = 0;
+  }
+
+  /**
+   * Draw pattern boundary lines to show where loops end/begin
+   * Double vertical gray lines mark the end of each pattern loop
+   * @param {GameState} gameState - Current game state
+   */
+  drawPatternBoundaries(gameState) {
+    const pattern = gameState.pattern;
+    if (!pattern || !pattern.singlePatternDuration) return;
+
+    const singleDuration = pattern.singlePatternDuration;
+    const loopCount = pattern.loopCount || 1;
+    const currentTime = gameState.currentTime;
+
+    // Set line style for boundary markers
+    this.ctx.strokeStyle = '#666666';
+    this.ctx.lineWidth = 2;
+
+    // Draw boundary at the end of each loop
+    for (let loop = 1; loop <= loopCount; loop++) {
+      const boundaryTime = loop * singleDuration;
+      const xPosition = this.calculateXPosition(boundaryTime, currentTime);
+
+      // Only draw if on screen
+      if (xPosition >= -10 && xPosition <= this.canvas.width + 10) {
+        // Draw double line (two lines ~4px apart)
+        const lineGap = 4;
+
+        // First line
+        this.ctx.beginPath();
+        this.ctx.moveTo(xPosition - lineGap / 2, 0);
+        this.ctx.lineTo(xPosition - lineGap / 2, this.canvas.height);
+        this.ctx.stroke();
+
+        // Second line
+        this.ctx.beginPath();
+        this.ctx.moveTo(xPosition + lineGap / 2, 0);
+        this.ctx.lineTo(xPosition + lineGap / 2, this.canvas.height);
+        this.ctx.stroke();
+      }
+    }
   }
 
   /**
