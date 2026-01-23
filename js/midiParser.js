@@ -33,18 +33,31 @@ export class MidiParser {
 
     console.log(`MIDI format: ${format}, tracks: ${numTracks}, PPQ: ${this.ticksPerQuarter}`);
 
-    // Find and parse track chunk
-    const trackType = this.readString(data, offset, 4);
-    if (trackType !== 'MTrk') {
-      throw new Error('Invalid MIDI file: missing MTrk track');
+    // Parse all tracks and collect notes
+    let allNotes = [];
+
+    for (let track = 0; track < numTracks; track++) {
+      // Find track chunk
+      const trackType = this.readString(data, offset, 4);
+      if (trackType !== 'MTrk') {
+        console.warn(`Expected MTrk at offset ${offset}, got ${trackType}`);
+        break;
+      }
+      offset += 4;
+
+      const trackLength = data.getUint32(offset);
+      offset += 4;
+
+      // Parse track events
+      const trackNotes = this.parseTrack(data, offset, trackLength);
+      allNotes = allNotes.concat(trackNotes);
+
+      // Move to next track
+      offset += trackLength;
     }
-    offset += 4;
 
-    const trackLength = data.getUint32(offset);
-    offset += 4;
-
-    // Parse track events
-    const notes = this.parseTrack(data, offset, trackLength);
+    // Sort all notes by time
+    allNotes.sort((a, b) => a.time - b.time);
 
     const bpm = Math.round(60000000 / this.tempo);
 
@@ -52,7 +65,7 @@ export class MidiParser {
       ticksPerQuarter: this.ticksPerQuarter,
       tempo: this.tempo,
       bpm: bpm,
-      notes: notes
+      notes: allNotes
     };
   }
 

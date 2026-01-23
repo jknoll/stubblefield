@@ -9,7 +9,7 @@ import { TimingJudge } from './timingJudge.js';
 import { ScoreManager } from './scoreManager.js';
 import { Metronome } from './metronome.js';
 import { AudioManager } from './audioManager.js';
-import { BASIC_ROCK_BEAT, createPattern, PATTERNS, loadFunkyDrummerPattern, getFunkyDrummerBPM } from './patterns.js';
+import { createPattern, PATTERNS, initializeMidiLibrary, getAvailablePatterns, getPatternCategories } from './patterns.js';
 import { MIDI_NOTE_MAP } from './constants.js';
 
 class DrumGame {
@@ -26,7 +26,7 @@ class DrumGame {
 
     this.currentBPM = 101;
     this.currentPattern = null;
-    this.currentPatternType = 'funkydrummer';
+    this.currentPatternType = 'funky_drummer_break_intro';
     this.lastBeat = 0;  // Track last beat for metronome clicks
 
     // Game phase: 'ready' | 'playing' | 'paused' | 'complete'
@@ -62,8 +62,8 @@ class DrumGame {
     // Default 30ms window - user can adjust via slider
     this.inputDebouncer = new InputDebouncer(30);
 
-    // Pre-load Funky Drummer pattern from MIDI file
-    await loadFunkyDrummerPattern();
+    // Initialize MIDI library and load all patterns
+    await initializeMidiLibrary();
 
     // Initialize game modules
     this.timingJudge = new TimingJudge();
@@ -71,10 +71,23 @@ class DrumGame {
     this.noteRenderer = new NoteRenderer(gameCanvas);
     this.audioManager = new AudioManager();
 
+    // Populate pattern dropdown with loaded patterns
+    this.populatePatternDropdown();
+
     // Create initial pattern
     const patternInfo = PATTERNS[this.currentPatternType];
-    this.currentBPM = patternInfo.defaultBPM;
-    this.currentPattern = createPattern(this.currentPatternType, this.currentBPM, patternInfo.bars);
+    if (patternInfo) {
+      this.currentBPM = patternInfo.defaultBPM;
+      this.currentPattern = createPattern(this.currentPatternType, this.currentBPM, this.getLoopCount());
+    } else {
+      // Fallback to first available pattern
+      const availablePatterns = getAvailablePatterns();
+      if (availablePatterns.length > 0) {
+        this.currentPatternType = availablePatterns[0].id;
+        this.currentBPM = availablePatterns[0].defaultBPM;
+        this.currentPattern = createPattern(this.currentPatternType, this.currentBPM, this.getLoopCount());
+      }
+    }
 
     this.metronome = new Metronome(this.currentBPM, metronomeCanvas);
 
@@ -520,6 +533,45 @@ class DrumGame {
     document.getElementById('good-count').textContent = scoreData.judgments.GOOD;
     document.getElementById('ok-count').textContent = scoreData.judgments.OK;
     document.getElementById('miss-count').textContent = scoreData.judgments.MISS;
+  }
+
+  /**
+   * Populate pattern dropdown with loaded MIDI patterns
+   */
+  populatePatternDropdown() {
+    const patternSelect = document.getElementById('pattern-select');
+    if (!patternSelect) return;
+
+    // Clear existing options
+    patternSelect.innerHTML = '';
+
+    const patterns = getAvailablePatterns();
+    const categories = getPatternCategories();
+
+    // Group patterns by category
+    for (const category of categories) {
+      const categoryPatterns = patterns.filter(p => p.category === category && !p.isFill);
+
+      if (categoryPatterns.length === 0) continue;
+
+      // Create optgroup for category
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = category;
+
+      for (const pattern of categoryPatterns) {
+        const option = document.createElement('option');
+        option.value = pattern.id;
+        option.textContent = pattern.name;
+        if (pattern.id === this.currentPatternType) {
+          option.selected = true;
+        }
+        optgroup.appendChild(option);
+      }
+
+      patternSelect.appendChild(optgroup);
+    }
+
+    console.log(`Populated dropdown with ${patterns.length} patterns in ${categories.length} categories`);
   }
 
   /**

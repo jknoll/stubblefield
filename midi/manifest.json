@@ -1,0 +1,476 @@
+{
+  "version": "1.0",
+  "patterns": [
+    {
+      "file": "Funky Drummer Break Intro.mid",
+      "name": "Funky Drummer (Intro Break)",
+      "category": "Funk",
+      "defaultBPM": 101,
+      "isLoopBased": true,
+      "featured": true
+    },
+    {
+      "file": "076 Chilled Beat 1.mid",
+      "name": "Chilled Beat 1",
+      "category": "Chilled Beats",
+      "defaultBPM": 76,
+      "isLoopBased": true
+    },
+    {
+      "file": "076 Chilled Beat 1A.mid",
+      "name": "Chilled Beat 1A",
+      "category": "Chilled Beats",
+      "defaultBPM": 76,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "076 Chilled Beat 1B.mid",
+      "name": "Chilled Beat 1B",
+      "category": "Chilled Beats",
+      "defaultBPM": 76,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "076 Chilled Beat 1C.mid",
+      "name": "Chilled Beat 1C",
+      "category": "Chilled Beats",
+      "defaultBPM": 76,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "076 Chilled Beat 1 Fill 1.mid",
+      "name": "Chilled Beat 1 Fill 1",
+      "category": "Chilled Beats",
+      "defaultBPM": 76,
+      "isFill": true
+    },
+    {
+      "file": "076 Chilled Beat 1 Fill 2.mid",
+      "name": "Chilled Beat 1 Fill 2",
+      "category": "Chilled Beats",
+      "defaultBPM": 76,
+      "isFill": true
+    },
+    {
+      "file": "076 Chilled Beat 1 Fill 3.mid",
+      "name": "Chilled Beat 1 Fill 3",
+      "category": "Chilled Beats",
+      "defaultBPM": 76,
+      "isFill": true
+    },
+    {
+      "file": "076 Chilled Beat 1 Fill 4.mid",
+      "name": "Chilled Beat 1 Fill 4",
+      "category": "Chilled Beats",
+      "defaultBPM": 76,
+      "isFill": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1.mid",
+      "name": "Hip Hop Beat 1",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isLoopBased": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1A.mid",
+      "name": "Hip Hop Beat 1A",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1B.mid",
+      "name": "Hip Hop Beat 1B",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1C.mid",
+      "name": "Hip Hop Beat 1C",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1D.mid",
+      "name": "Hip Hop Beat 1D",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1 Hat Var.mid",
+      "name": "Hip Hop Beat 1 (Hat Variation)",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1 Fill 1.mid",
+      "name": "Hip Hop Beat 1 Fill 1",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isFill": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1 Fill 2.mid",
+      "name": "Hip Hop Beat 1 Fill 2",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isFill": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1 Fill 3.mid",
+      "name": "Hip Hop Beat 1 Fill 3",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isFill": true
+    },
+    {
+      "file": "078 Hip Hop Beat 1 Fill 4.mid",
+      "name": "Hip Hop Beat 1 Fill 4",
+      "category": "Hip Hop",
+      "defaultBPM": 78,
+      "isFill": true
+    },
+    {
+      "file": "092 Funk 1.mid",
+      "name": "Funk 1",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true
+    },
+    {
+      "file": "092 Funk 1A.mid",
+      "name": "Funk 1A",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1B.mid",
+      "name": "Funk 1B",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1C.mid",
+      "name": "Funk 1C",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1D.mid",
+      "name": "Funk 1D",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1E.mid",
+      "name": "Funk 1E",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1F.mid",
+      "name": "Funk 1F",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1G.mid",
+      "name": "Funk 1G",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1H.mid",
+      "name": "Funk 1H",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1I.mid",
+      "name": "Funk 1I",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1J.mid",
+      "name": "Funk 1J",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1K.mid",
+      "name": "Funk 1K",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1 Combo 1.mid",
+      "name": "Funk 1 Combo 1",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1 Combo 2.mid",
+      "name": "Funk 1 Combo 2",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1 Combo 3.mid",
+      "name": "Funk 1 Combo 3",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "092 Funk 1 Fill 1.mid",
+      "name": "Funk 1 Fill 1",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isFill": true
+    },
+    {
+      "file": "092 Funk 1 Fill 2.mid",
+      "name": "Funk 1 Fill 2",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isFill": true
+    },
+    {
+      "file": "092 Funk 1 Fill 3.mid",
+      "name": "Funk 1 Fill 3",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isFill": true
+    },
+    {
+      "file": "092 Funk 1 Fill 4.mid",
+      "name": "Funk 1 Fill 4",
+      "category": "Funk",
+      "defaultBPM": 92,
+      "isFill": true
+    },
+    {
+      "file": "135 Motown Beat Hat.mid",
+      "name": "Motown Beat (Hat)",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isLoopBased": true
+    },
+    {
+      "file": "135 Motown Beat Ride.mid",
+      "name": "Motown Beat (Ride)",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "135 Motown Beat Fill 1.mid",
+      "name": "Motown Beat Fill 1",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isFill": true
+    },
+    {
+      "file": "135 Motown Beat Fill 2.mid",
+      "name": "Motown Beat Fill 2",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isFill": true
+    },
+    {
+      "file": "135 Motown Beat Fill 3.mid",
+      "name": "Motown Beat Fill 3",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isFill": true
+    },
+    {
+      "file": "135 Motown Beat Fill 4.mid",
+      "name": "Motown Beat Fill 4",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isFill": true
+    },
+    {
+      "file": "135 Motown Beat Fill 5.mid",
+      "name": "Motown Beat Fill 5",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isFill": true
+    },
+    {
+      "file": "135 Motown Beat Fill 6.mid",
+      "name": "Motown Beat Fill 6",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isFill": true
+    },
+    {
+      "file": "135 Motown Beat Fill 7.mid",
+      "name": "Motown Beat Fill 7",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isFill": true
+    },
+    {
+      "file": "135 Motown Beat Fill 8.mid",
+      "name": "Motown Beat Fill 8",
+      "category": "Motown",
+      "defaultBPM": 135,
+      "isFill": true
+    },
+    {
+      "file": "152 DnB Hat.mid",
+      "name": "DnB (Hat)",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isLoopBased": true
+    },
+    {
+      "file": "152 DnB Hat A.mid",
+      "name": "DnB Hat A",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "152 DnB Hat B.mid",
+      "name": "DnB Hat B",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "152 DnB Ride.mid",
+      "name": "DnB (Ride)",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "152 DnB Groove 2.mid",
+      "name": "DnB Groove 2",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "152 DnB Groove 3.mid",
+      "name": "DnB Groove 3",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "152 DnB Groove 4.mid",
+      "name": "DnB Groove 4",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isLoopBased": true,
+      "isVariation": true
+    },
+    {
+      "file": "152 DnB Hat Fill 1.mid",
+      "name": "DnB Hat Fill 1",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isFill": true
+    },
+    {
+      "file": "152 DnB Hat Fill 2.mid",
+      "name": "DnB Hat Fill 2",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isFill": true
+    },
+    {
+      "file": "152 DnB Hat Fill 3.mid",
+      "name": "DnB Hat Fill 3",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isFill": true
+    },
+    {
+      "file": "152 DnB Hat Fill 4.mid",
+      "name": "DnB Hat Fill 4",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isFill": true
+    },
+    {
+      "file": "152 DnB Ride Fill 1.mid",
+      "name": "DnB Ride Fill 1",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isFill": true
+    },
+    {
+      "file": "152 DnB Ride Fill 2.mid",
+      "name": "DnB Ride Fill 2",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isFill": true
+    },
+    {
+      "file": "152 DnB Ride Fill 3.mid",
+      "name": "DnB Ride Fill 3",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isFill": true
+    },
+    {
+      "file": "152 DnB Ride Fill 4.mid",
+      "name": "DnB Ride Fill 4",
+      "category": "Drum & Bass",
+      "defaultBPM": 152,
+      "isFill": true
+    }
+  ]
+}
