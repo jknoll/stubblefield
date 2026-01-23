@@ -1,41 +1,58 @@
 /* Main layout and UI styles */
 
-/* Theme Variables - Dark Mode (default) */
+/* Theme Variables - Dark Mode (default)
+   Inspired by hardware synthesizer/drum machine aesthetics */
 :root {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #252525;
-  --bg-panel: #1a1a2e;
-  --text-primary: #ffffff;
-  --text-secondary: #aaaaaa;
-  --text-muted: #666666;
-  --border-color: #333333;
-  --accent-green: #4CAF50;
-  --accent-red: #F44336;
-  --accent-yellow: #FFC107;
-  --accent-blue: #4285F4;
-  --canvas-bg: #1a1a1a;
-  --canvas-grid: #333355;
-  --shadow-color: rgba(0, 0, 0, 0.3);
+  --bg-primary: #121214;
+  --bg-secondary: #1c1c20;
+  --bg-tertiary: #2a2a30;
+  --bg-panel: #1e1e28;
+  --text-primary: #f0f0f2;
+  --text-secondary: #9898a0;
+  --text-muted: #606068;
+  --border-color: #3a3a44;
+
+  /* Vibrant accent colors from design system */
+  --accent-primary: #00d4aa;    /* Teal/Cyan - primary action */
+  --accent-secondary: #ff3399;  /* Magenta/Pink - highlights */
+  --accent-green: #00d4aa;
+  --accent-red: #ff4466;
+  --accent-yellow: #ffcc00;
+  --accent-blue: #00aaff;
+
+  --canvas-bg: #18181c;
+  --canvas-grid: #2e2e38;
+  --shadow-color: rgba(0, 0, 0, 0.4);
+
+  /* Glow effects for accents */
+  --glow-primary: rgba(0, 212, 170, 0.3);
+  --glow-secondary: rgba(255, 51, 153, 0.3);
 }
 
 /* Light Mode Theme */
 [data-theme="light"] {
-  --bg-primary: #f5f5f5;
+  --bg-primary: #f0f0f2;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #e8e8e8;
+  --bg-tertiary: #e4e4e8;
   --bg-panel: #ffffff;
-  --text-primary: #1a1a1a;
-  --text-secondary: #555555;
-  --text-muted: #888888;
-  --border-color: #cccccc;
-  --accent-green: #2E7D32;
-  --accent-red: #C62828;
-  --accent-yellow: #F9A825;
-  --accent-blue: #1565C0;
-  --canvas-bg: #e8e8e8;
-  --canvas-grid: #ccccdd;
-  --shadow-color: rgba(0, 0, 0, 0.1);
+  --text-primary: #1a1a1e;
+  --text-secondary: #555560;
+  --text-muted: #8888990;
+  --border-color: #d0d0d8;
+
+  --accent-primary: #00a080;
+  --accent-secondary: #cc2277;
+  --accent-green: #00a080;
+  --accent-red: #cc3344;
+  --accent-yellow: #cc9900;
+  --accent-blue: #0088cc;
+
+  --canvas-bg: #e8e8ec;
+  --canvas-grid: #c8c8d0;
+  --shadow-color: rgba(0, 0, 0, 0.08);
+
+  --glow-primary: rgba(0, 160, 128, 0.2);
+  --glow-secondary: rgba(204, 34, 119, 0.2);
 }
 
 * {
@@ -191,7 +208,7 @@ header h1 {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid #4CAF50;
+  border: 2px solid var(--accent-primary);
 }
 
 #user-name {
@@ -243,7 +260,7 @@ header h1 {
 }
 
 .status-connected {
-  color: #4CAF50;
+  color: var(--accent-primary);
 }
 
 /* Compact Controls Row */
@@ -274,7 +291,7 @@ header h1 {
 #bpm-display {
   font-size: 18px;
   font-weight: bold;
-  color: #4CAF50;
+  color: var(--accent-primary);
 }
 
 .bpm-btn {
@@ -284,14 +301,14 @@ header h1 {
   font-weight: bold;
   border: none;
   border-radius: 4px;
-  background: #4CAF50;
+  background: var(--accent-primary);
   color: white;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .bpm-btn:hover {
-  background: #45a049;
+  background: var(--accent-primary);
   transform: scale(1.1);
 }
 
@@ -314,21 +331,21 @@ header h1 {
   appearance: none;
   width: 16px;
   height: 16px;
-  background: #4CAF50;
+  background: var(--accent-primary);
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 #bpm-slider::-webkit-slider-thumb:hover {
-  background: #45a049;
+  background: var(--accent-primary);
   transform: scale(1.2);
 }
 
 #bpm-slider::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  background: #4CAF50;
+  background: var(--accent-primary);
   border-radius: 50%;
   cursor: pointer;
   border: none;
@@ -336,7 +353,7 @@ header h1 {
 }
 
 #bpm-slider::-moz-range-thumb:hover {
-  background: #45a049;
+  background: var(--accent-primary);
   transform: scale(1.2);
 }
 
@@ -345,7 +362,7 @@ header h1 {
   font-size: 13px;
   background: #333;
   color: #fff;
-  border: 1px solid #4CAF50;
+  border: 1px solid var(--accent-primary);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
@@ -355,11 +372,11 @@ header h1 {
 
 #pattern-select:hover {
   background: #3a3a3a;
-  border-color: #45a049;
+  border-color: var(--accent-primary);
 }
 
 #pattern-select:focus {
-  border-color: #4CAF50;
+  border-color: var(--accent-primary);
   box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
 }
 
@@ -368,7 +385,7 @@ header h1 {
   font-size: 13px;
   background: #333;
   color: #fff;
-  border: 1px solid #4CAF50;
+  border: 1px solid var(--accent-primary);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
@@ -378,11 +395,11 @@ header h1 {
 
 #loop-count:hover {
   background: #3a3a3a;
-  border-color: #45a049;
+  border-color: var(--accent-primary);
 }
 
 #loop-count:focus {
-  border-color: #4CAF50;
+  border-color: var(--accent-primary);
   box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
 }
 
@@ -452,7 +469,7 @@ header h1 {
 .score-value {
   font-size: 24px;
   font-weight: bold;
-  color: #4CAF50;
+  color: var(--accent-primary);
 }
 
 /* Judgment stats */
@@ -479,7 +496,7 @@ header h1 {
 }
 
 .judgment-label.perfect {
-  background: #4CAF50;
+  background: var(--accent-primary);
   color: #000;
 }
 
@@ -531,14 +548,17 @@ header h1 {
 }
 
 .btn-primary {
-  background: #4CAF50;
-  color: white;
+  background: var(--accent-primary);
+  color: #000;
+  font-weight: 600;
+  box-shadow: 0 0 12px var(--glow-primary);
 }
 
 .btn-primary:hover {
-  background: #45a049;
+  background: var(--accent-primary);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+  box-shadow: 0 4px 16px var(--glow-primary), 0 0 20px var(--glow-primary);
+  filter: brightness(1.1);
 }
 
 .btn-secondary {
@@ -619,7 +639,7 @@ header h1 {
 
 .stats-container h3 {
   margin: 0;
-  color: #4CAF50;
+  color: var(--accent-primary);
 }
 
 .stats-header {
@@ -723,21 +743,21 @@ header h1 {
   appearance: none;
   width: 14px;
   height: 14px;
-  background: #4CAF50;
+  background: var(--accent-primary);
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .setting-group input[type="range"]::-webkit-slider-thumb:hover {
-  background: #45a049;
+  background: var(--accent-primary);
   transform: scale(1.2);
 }
 
 .setting-group input[type="range"]::-moz-range-thumb {
   width: 14px;
   height: 14px;
-  background: #4CAF50;
+  background: var(--accent-primary);
   border-radius: 50%;
   cursor: pointer;
   border: none;
@@ -745,14 +765,14 @@ header h1 {
 }
 
 .setting-group input[type="range"]::-moz-range-thumb:hover {
-  background: #45a049;
+  background: var(--accent-primary);
   transform: scale(1.2);
 }
 
 .setting-group span {
   font-size: 12px;
   font-weight: bold;
-  color: #4CAF50;
+  color: var(--accent-primary);
   min-width: 35px;
 }
 

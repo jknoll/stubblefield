@@ -45,21 +45,25 @@ export class NoteRenderer {
   getThemeColors(theme) {
     if (theme === 'light') {
       return {
-        background1: '#e8e8e8',
-        background2: '#d8d8d8',
-        laneStroke: '#cccccc',
-        textPrimary: '#1a1a1a',
-        textSecondary: '#555555',
-        textMuted: '#888888'
+        background1: '#e8e8ec',
+        background2: '#dcdce4',
+        laneStroke: '#c8c8d0',
+        textPrimary: '#1a1a1e',
+        textSecondary: '#555560',
+        textMuted: '#888890',
+        accentPrimary: '#00a080',
+        accentSecondary: '#cc2277'
       };
     }
     return {
-      background1: '#1a1a1a',
-      background2: '#0a0a0a',
-      laneStroke: '#333333',
-      textPrimary: '#ffffff',
-      textSecondary: '#888888',
-      textMuted: '#666666'
+      background1: '#1c1c20',
+      background2: '#121214',
+      laneStroke: '#2e2e38',
+      textPrimary: '#f0f0f2',
+      textSecondary: '#9898a0',
+      textMuted: '#606068',
+      accentPrimary: '#00d4aa',
+      accentSecondary: '#ff3399'
     };
   }
 

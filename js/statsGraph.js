@@ -5,29 +5,29 @@ export class StatsGraph {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
-    // Theme color palettes
+    // Theme color palettes - matching design system
     this.themeColors = {
       dark: {
-        background: '#1a1a2e',
-        grid: '#333355',
-        currentLine: '#44FF44',
-        currentFill: 'rgba(68, 255, 68, 0.2)',
-        historicalLine: '#4488FF',
-        historicalFill: 'rgba(68, 136, 255, 0.15)',
-        axis: '#666688',
-        text: '#aaaacc',
-        highlight: '#FFFF44'
+        background: '#1e1e28',
+        grid: '#2e2e38',
+        currentLine: '#00d4aa',
+        currentFill: 'rgba(0, 212, 170, 0.2)',
+        historicalLine: '#00aaff',
+        historicalFill: 'rgba(0, 170, 255, 0.15)',
+        axis: '#606068',
+        text: '#9898a0',
+        highlight: '#ff3399'
       },
       light: {
         background: '#f0f0f5',
-        grid: '#ccccdd',
-        currentLine: '#22AA22',
-        currentFill: 'rgba(34, 170, 34, 0.2)',
-        historicalLine: '#2266DD',
-        historicalFill: 'rgba(34, 102, 221, 0.15)',
-        axis: '#888899',
-        text: '#444466',
-        highlight: '#CC9900'
+        grid: '#d8d8e0',
+        currentLine: '#00a080',
+        currentFill: 'rgba(0, 160, 128, 0.2)',
+        historicalLine: '#0088cc',
+        historicalFill: 'rgba(0, 136, 204, 0.15)',
+        axis: '#888890',
+        text: '#555560',
+        highlight: '#cc2277'
       }
     };
 
