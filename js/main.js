@@ -134,6 +134,14 @@ class DrumGame {
     // Initialize Firebase Auth if config is available
     await this.initializeAuth();
 
+    // Hide loading overlay
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+      loadingOverlay.classList.add('hidden');
+      // Remove from DOM after transition
+      setTimeout(() => loadingOverlay.remove(), 300);
+    }
+
     this.initialized = true;
     console.log('Game initialized successfully');
   }
@@ -161,10 +169,12 @@ class DrumGame {
       console.log('1. Uncomment Firebase scripts in index.html');
       console.log('2. Add your Firebase project config');
 
-      // Hide sign-in button if auth is not available
+      // Keep sign-in button visible but show message when clicked
       const signInBtn = document.getElementById('sign-in-btn');
       if (signInBtn) {
-        signInBtn.style.display = 'none';
+        signInBtn.addEventListener('click', () => {
+          alert('Sign in requires Firebase configuration. See FIREBASE.md for setup instructions.');
+        });
       }
     }
   }
