@@ -23,12 +23,18 @@ export class NoteRenderer {
     // Hover state for tooltips
     this.hoveredLane = null;
 
+    // Muted instruments tracking
+    this.mutedInstruments = new Set();
+
+    // Callback for mute toggle
+    this.onMuteToggle = null;
+
     this.setupCanvas();
     this.setupMouseEvents();
   }
 
   /**
-   * Set up mouse events for lane hover tooltips
+   * Set up mouse events for lane hover tooltips and mute toggle
    */
   setupMouseEvents() {
     this.canvas.addEventListener('mousemove', (e) => {
@@ -46,6 +52,59 @@ export class NoteRenderer {
     this.canvas.addEventListener('mouseleave', () => {
       this.hoveredLane = null;
     });
+
+    // Handle click on mute icon area
+    this.canvas.addEventListener('click', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // Check if click is in the mute icon area (left 70px of canvas)
+      if (x < 70) {
+        const lane = Math.floor(y / this.config.LANE_HEIGHT);
+        if (lane >= 0 && lane < Object.keys(MIDI_NOTE_MAP).length) {
+          // Find the MIDI note for this lane
+          const midiNote = Object.entries(MIDI_NOTE_MAP).find(([_, info]) => info.lane === lane)?.[0];
+          if (midiNote) {
+            this.toggleMute(parseInt(midiNote));
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Toggle mute state for an instrument
+   * @param {number} midiNote - MIDI note number
+   */
+  toggleMute(midiNote) {
+    if (this.mutedInstruments.has(midiNote)) {
+      this.mutedInstruments.delete(midiNote);
+    } else {
+      this.mutedInstruments.add(midiNote);
+    }
+
+    // Notify callback
+    if (this.onMuteToggle) {
+      this.onMuteToggle(midiNote, this.mutedInstruments.has(midiNote));
+    }
+  }
+
+  /**
+   * Check if an instrument is muted
+   * @param {number} midiNote - MIDI note number
+   * @returns {boolean} True if muted
+   */
+  isMuted(midiNote) {
+    return this.mutedInstruments.has(midiNote);
+  }
+
+  /**
+   * Set mute callback
+   * @param {Function} callback - Callback(midiNote, isMuted)
+   */
+  setMuteCallback(callback) {
+    this.onMuteToggle = callback;
   }
 
   /**
@@ -164,17 +223,21 @@ export class NoteRenderer {
       // Calculate Y position based on lane
       const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
 
+      // Check if this instrument is muted
+      const isMuted = this.mutedInstruments.has(note.midiNote);
+
       // Fade out gradually
       const fadeProgress = Math.min(timeSinceHit / maxVisibleTime, 1);
-      const alpha = 1 - (fadeProgress * 0.7); // Fade to 30% opacity
+      let alpha = 1 - (fadeProgress * 0.7); // Fade to 30% opacity
+      if (isMuted) alpha *= 0.4; // Further reduce alpha for muted
 
-      // Get color based on accuracy
-      const color = this.getAccuracyColor(note.accuracy);
+      // Get color based on accuracy (gray if muted)
+      const color = isMuted ? '#444' : this.getAccuracyColor(note.accuracy);
 
       // Draw note with accuracy color
       this.ctx.globalAlpha = alpha;
       this.ctx.fillStyle = color;
-      this.ctx.shadowBlur = 8;
+      this.ctx.shadowBlur = isMuted ? 0 : 8;
       this.ctx.shadowColor = color;
 
       const padding = 4;
@@ -186,7 +249,7 @@ export class NoteRenderer {
       );
 
       // Draw note border
-      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      this.ctx.strokeStyle = isMuted ? 'rgba(100, 100, 100, 0.5)' : 'rgba(255, 255, 255, 0.5)';
       this.ctx.lineWidth = 1;
       this.ctx.strokeRect(
         xPosition,
@@ -211,6 +274,10 @@ export class NoteRenderer {
     missedNotes.forEach(note => {
       const noteInfo = MIDI_NOTE_MAP[note.midiNote];
       if (!noteInfo) return;
+
+      // Check if this instrument is muted - skip showing missed indicator for muted notes
+      const isMuted = this.mutedInstruments.has(note.midiNote);
+      if (isMuted) return; // Don't show missed notes for muted instruments
 
       const timeSinceMiss = currentTime - note.time;
 
@@ -278,6 +345,7 @@ export class NoteRenderer {
   /**
    * Draw horizontal lane dividers and labels on left side
    * Shows keyboard key labels when in keyboard mode
+   * Shows mute toggle icons on the left edge
    */
   drawLanes() {
     const laneCount = Object.keys(MIDI_NOTE_MAP).length;
@@ -302,31 +370,78 @@ export class NoteRenderer {
       const y = info.lane * this.config.LANE_HEIGHT + this.config.LANE_HEIGHT / 2;
       const x = 8;
       const isHovered = this.hoveredLane === info.lane;
+      const isMuted = this.mutedInstruments.has(parseInt(midiNote));
 
-      // Draw drum name
-      this.ctx.fillStyle = isHovered ? '#FFF' : '#888';
+      // Draw muted lane background overlay
+      if (isMuted) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        this.ctx.fillRect(0, info.lane * this.config.LANE_HEIGHT, this.canvas.width, this.config.LANE_HEIGHT);
+      }
+
+      // Draw mute icon (speaker) on the far left
+      this.drawMuteIcon(2, y, isMuted, isHovered);
+
+      // Draw drum name (offset for mute icon)
+      const labelX = x + 15;
+      this.ctx.fillStyle = isMuted ? '#555' : (isHovered ? '#FFF' : '#888');
       this.ctx.font = isHovered ? 'bold 11px Arial' : '11px Arial';
-      this.ctx.fillText(info.name, x, y - (this.isKeyboardMode ? 8 : 0));
+      this.ctx.fillText(info.name, labelX, y - (this.isKeyboardMode ? 8 : 0));
 
       // Show keyboard key when in keyboard mode
       if (this.isKeyboardMode) {
         const keyName = MIDI_TO_KEY[midiNote];
         if (keyName) {
           // Draw key in a small box
-          this.ctx.fillStyle = info.color;
+          this.ctx.fillStyle = isMuted ? '#444' : info.color;
           this.ctx.font = 'bold 12px Arial';
-          this.ctx.fillText(keyName, x, y + 10);
+          this.ctx.fillText(keyName, labelX, y + 10);
         }
       }
 
       // Show MIDI note number tooltip on hover
-      if (isHovered) {
+      if (isHovered && !isMuted) {
         const tooltipText = `MIDI ${midiNote}`;
         this.ctx.fillStyle = '#FFD700';
         this.ctx.font = '10px Arial';
-        this.ctx.fillText(tooltipText, x + 55, y);
+        this.ctx.fillText(tooltipText, labelX + 48, y);
       }
     });
+  }
+
+  /**
+   * Draw a mute icon (speaker with/without X)
+   * @param {number} x - X position
+   * @param {number} y - Y position (center)
+   * @param {boolean} isMuted - Whether instrument is muted
+   * @param {boolean} isHovered - Whether lane is hovered
+   */
+  drawMuteIcon(x, y, isMuted, isHovered) {
+    const size = 10;
+    const ctx = this.ctx;
+
+    // Speaker body
+    ctx.fillStyle = isMuted ? '#F44336' : (isHovered ? '#4CAF50' : '#666');
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y - 3);
+    ctx.lineTo(x + 6, y - 3);
+    ctx.lineTo(x + 10, y - 6);
+    ctx.lineTo(x + 10, y + 6);
+    ctx.lineTo(x + 6, y + 3);
+    ctx.lineTo(x + 2, y + 3);
+    ctx.closePath();
+    ctx.fill();
+
+    // X mark when muted
+    if (isMuted) {
+      ctx.strokeStyle = '#FFF';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 12, y - 4);
+      ctx.lineTo(x + 18, y + 4);
+      ctx.moveTo(x + 18, y - 4);
+      ctx.lineTo(x + 12, y + 4);
+      ctx.stroke();
+    }
   }
 
   /**
@@ -412,10 +527,15 @@ export class NoteRenderer {
     // Calculate Y position based on lane
     const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
 
-    // Draw note rectangle with glow
-    this.ctx.fillStyle = noteInfo.color;
-    this.ctx.shadowBlur = 10;
-    this.ctx.shadowColor = noteInfo.color;
+    // Check if this instrument is muted
+    const isMuted = this.mutedInstruments.has(note.midiNote);
+
+    // Draw note rectangle with glow (grayed out if muted)
+    const noteColor = isMuted ? '#444' : noteInfo.color;
+    this.ctx.fillStyle = noteColor;
+    this.ctx.shadowBlur = isMuted ? 0 : 10;
+    this.ctx.shadowColor = noteColor;
+    this.ctx.globalAlpha = isMuted ? 0.4 : 1.0;
 
     const padding = 4;
     this.ctx.fillRect(
@@ -426,7 +546,7 @@ export class NoteRenderer {
     );
 
     // Draw note border
-    this.ctx.strokeStyle = '#FFF';
+    this.ctx.strokeStyle = isMuted ? '#555' : '#FFF';
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(
       xPosition,
@@ -435,8 +555,9 @@ export class NoteRenderer {
       this.config.LANE_HEIGHT - padding * 2
     );
 
-    // Reset shadow
+    // Reset shadow and alpha
     this.ctx.shadowBlur = 0;
+    this.ctx.globalAlpha = 1.0;
   }
 
   /**
@@ -599,16 +720,20 @@ export class NoteRenderer {
       // Calculate Y position based on lane
       const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
 
-      // Get accuracy-based color
-      const color = this.getAccuracyColor(note.accuracy);
+      // Check if this instrument is muted
+      const isMuted = this.mutedInstruments.has(note.midiNote);
+
+      // Get accuracy-based color (gray if muted)
+      const color = isMuted ? '#444' : this.getAccuracyColor(note.accuracy);
 
       // Use fixed note width matching playback
       const noteWidth = this.baseConfig.NOTE_WIDTH;
 
-      // Draw note rectangle with glow
+      // Draw note rectangle with glow (reduced for muted)
       this.ctx.fillStyle = color;
-      this.ctx.shadowBlur = 8;
+      this.ctx.shadowBlur = isMuted ? 0 : 8;
       this.ctx.shadowColor = color;
+      this.ctx.globalAlpha = isMuted ? 0.4 : 1.0;
 
       const padding = 4;
       this.ctx.fillRect(
@@ -619,7 +744,7 @@ export class NoteRenderer {
       );
 
       // Draw note border
-      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      this.ctx.strokeStyle = isMuted ? 'rgba(100, 100, 100, 0.5)' : 'rgba(255, 255, 255, 0.7)';
       this.ctx.lineWidth = 1;
       this.ctx.strokeRect(
         finalX - noteWidth / 2,
@@ -629,6 +754,7 @@ export class NoteRenderer {
       );
 
       this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = 1.0;
     });
   }
 

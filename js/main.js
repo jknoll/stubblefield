@@ -94,6 +94,11 @@ class DrumGame {
       };
     }
 
+    // Set up mute callback on note renderer
+    this.noteRenderer.setMuteCallback((midiNote, isMuted) => {
+      console.log(`Mute toggled: MIDI ${midiNote} -> ${isMuted ? 'muted' : 'unmuted'}`);
+    });
+
     // Populate pattern dropdown with loaded patterns
     this.populatePatternDropdown();
 
@@ -411,12 +416,20 @@ class DrumGame {
     const noteInfo = MIDI_NOTE_MAP[midiNote];
     if (!noteInfo) return; // Unknown note
 
-    // Always play sound and show lane indicator (even when not playing)
-    this.playDrumHit(midiNote, velocity);
+    // Check if this instrument is muted
+    const isMuted = this.noteRenderer.isMuted(midiNote);
+
+    // Always play sound (unless muted) and show lane indicator (even when not playing)
+    if (!isMuted) {
+      this.playDrumHit(midiNote, velocity);
+    }
     this.showLaneIndicator(noteInfo.lane);
 
     // Only do scoring/judgment when game is playing
     if (!this.gameState.isPlaying) return;
+
+    // Skip scoring for muted instruments
+    if (isMuted) return;
 
     // Find matching note
     const matchingNote = this.timingJudge.findMatchingNote(
@@ -1204,6 +1217,10 @@ class DrumGame {
     };
 
     this.gameState.onMiss = (note) => {
+      // Skip scoring misses for muted instruments
+      if (this.noteRenderer.isMuted(note.midiNote)) {
+        return;
+      }
       this.scoreManager.recordMiss();
     };
 
@@ -1230,17 +1247,25 @@ class DrumGame {
     const padLightLeadTime = 100; // ms ahead to light pad (gives player visual cue)
 
     this.gameState.activeNotes.forEach(note => {
+      // Check if this instrument is muted
+      const isMuted = this.noteRenderer.isMuted(note.midiNote);
+
       // Check if this note should be playing now and hasn't been marked as sounded
       if (!note.sounded && Math.abs(note.time - currentTime) <= soundWindow) {
-        this.audioManager.playDrumSound(note.midiNote, note.velocity);
+        // Only play sound if not muted
+        if (!isMuted) {
+          this.audioManager.playDrumSound(note.midiNote, note.velocity);
+        }
         note.sounded = true; // Mark as sounded to prevent replaying
       }
 
-      // Trigger pad light slightly ahead of when note should be hit
+      // Trigger pad light slightly ahead of when note should be hit (even if muted, for visual reference)
       // Light the pad padLightLeadTime ms before the note time
       const timeUntilNote = note.time - currentTime;
       if (!note.padLit && timeUntilNote > 0 && timeUntilNote <= padLightLeadTime) {
-        this.triggerPadLight(note.midiNote);
+        if (!isMuted) {
+          this.triggerPadLight(note.midiNote);
+        }
         note.padLit = true;
       }
     });
