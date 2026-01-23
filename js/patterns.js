@@ -406,7 +406,26 @@ export function createPattern(patternType = 'rock', bpm = 120, bars = 8) {
   }
 
   const beatDuration = (60 / bpm) * 1000;
-  const duration = beatDuration * 4 * bars;
+  const barDuration = beatDuration * 4;
+  const duration = barDuration * bars;
+
+  // For loop-based patterns, store single loop info for accuracy averaging
+  const patternInfo = PATTERNS[patternType];
+  const isLoopBased = patternInfo?.isLoopBased || false;
+
+  // Calculate single pattern duration (for averaging across loops)
+  // For funkydrummer: single loop is 1 bar, bars = number of loops
+  // For other patterns: single pattern is all bars, no looping
+  let singlePatternDuration, loopCount;
+  if (isLoopBased) {
+    // Loop-based: bars represents number of loops
+    singlePatternDuration = barDuration;  // One bar per loop
+    loopCount = bars;
+  } else {
+    // Bar-based: entire pattern is one unit
+    singlePatternDuration = duration;
+    loopCount = 1;
+  }
 
   return {
     name: name,
@@ -415,6 +434,8 @@ export function createPattern(patternType = 'rock', bpm = 120, bars = 8) {
     defaultBPM: defaultBPM,
     timeSignature: [4, 4],
     duration: duration,
+    singlePatternDuration: singlePatternDuration,
+    loopCount: loopCount,
     notes: notes
   };
 }

@@ -56,8 +56,7 @@ export const GAME_CONFIG = {
   CANVAS_WIDTH: 800,         // Wide for horizontal scrolling
   CANVAS_HEIGHT: 360,        // 6 lanes × 60px
   COMBO_MULTIPLIER: 0.1,     // 10% bonus per combo
-  LEAD_IN_TIME: 4000,        // 4 seconds countdown before first note
-  COUNTDOWN_BEATS: 4         // Number of beats to count down
+  COUNTDOWN_BEATS: 8         // Number of beats to count down (lead-in time calculated from BPM)
 };
 
 // Get lane count from MIDI_NOTE_MAP

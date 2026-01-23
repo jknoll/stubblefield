@@ -11,6 +11,9 @@ export class NoteRenderer {
     // Recent hit feedback for display
     this.recentHits = [];
 
+    // Flag to prevent rendering over completion view
+    this.showingCompletionView = false;
+
     this.setupCanvas();
   }
 
@@ -30,6 +33,9 @@ export class NoteRenderer {
    * @param {GameState} gameState - Current game state
    */
   render(gameState) {
+    // Don't render over completion view
+    if (this.showingCompletionView) return;
+
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -267,5 +273,145 @@ export class NoteRenderer {
     // Progress
     this.ctx.fillStyle = '#4CAF50';
     this.ctx.fillRect(0, 0, (barWidth * progress) / 100, barHeight);
+  }
+
+  /**
+   * Render completion view showing all notes with accuracy coloring
+   * Like the normal gameplay view but frozen and scaled to fit entire pattern
+   * @param {Array} notes - All notes with accuracy data
+   * @param {number} patternDuration - Total duration of the pattern
+   */
+  renderCompletionView(notes, patternDuration) {
+    // Set flag to prevent regular render from overwriting
+    this.showingCompletionView = true;
+
+    // Clear canvas
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Draw background
+    this.drawBackground();
+
+    // Draw lane dividers
+    this.drawLanes();
+
+    // Calculate scale to fit entire pattern on screen
+    // Leave margin on left for lane labels, small margin on right
+    const leftMargin = 60;
+    const rightMargin = 10;
+    const availableWidth = this.canvas.width - leftMargin - rightMargin;
+
+    // Scale: pixels per ms to fit entire pattern
+    const timeScale = availableWidth / patternDuration;
+
+    // Draw each note scaled to fit
+    notes.forEach(note => {
+      const noteInfo = MIDI_NOTE_MAP[note.midiNote];
+      if (!noteInfo) return;
+
+      // Calculate X position: scale note time to fit canvas
+      const xPosition = leftMargin + (note.time * timeScale);
+
+      // Calculate Y position based on lane
+      const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
+
+      // Get accuracy-based color
+      const color = this.getAccuracyColor(note.accuracy);
+
+      // Calculate note width (scale it too, but ensure minimum visibility)
+      const noteWidth = Math.max(6, this.config.NOTE_WIDTH * timeScale * 5);
+
+      // Draw note rectangle with glow
+      this.ctx.fillStyle = color;
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowColor = color;
+
+      const padding = 4;
+      this.ctx.fillRect(
+        xPosition - noteWidth / 2,
+        yPosition + padding,
+        noteWidth,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+
+      // Draw note border
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(
+        xPosition - noteWidth / 2,
+        yPosition + padding,
+        noteWidth,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+
+      this.ctx.shadowBlur = 0;
+    });
+  }
+
+  /**
+   * Get color based on accuracy data
+   * @param {Object} accuracy - Accuracy object from note
+   * @returns {string} Color code
+   */
+  getAccuracyColor(accuracy) {
+    if (!accuracy) return '#888888';
+
+    // Missed or wrong pad = red
+    if (accuracy.missed || accuracy.wrongPad) {
+      return '#FF4444';
+    }
+
+    // Color based on judgment quality
+    switch (accuracy.judgment) {
+      case 'PERFECT':
+        return '#44FF44'; // Bright green
+      case 'GOOD':
+        return '#88CC88'; // Medium green
+      case 'OK':
+        return '#CCCC44'; // Yellowish
+      case 'EARLY':
+      case 'LATE':
+        return '#FF9944'; // Orange
+      default:
+        return '#888888';
+    }
+  }
+
+  /**
+   * Clear completion view flag to allow normal rendering
+   */
+  clearCompletionView() {
+    this.showingCompletionView = false;
+  }
+
+  /**
+   * Draw accuracy legend at the bottom of the canvas
+   */
+  drawAccuracyLegend() {
+    const legendItems = [
+      { label: 'Perfect', color: '#44FF44' },
+      { label: 'Good', color: '#88CC88' },
+      { label: 'OK', color: '#CCCC44' },
+      { label: 'Early/Late', color: '#FF9944' },
+      { label: 'Miss', color: '#FF4444' }
+    ];
+
+    const y = this.canvas.height - 15;
+    const itemWidth = 80;
+    const startX = (this.canvas.width - (legendItems.length * itemWidth)) / 2;
+
+    this.ctx.font = '10px Arial';
+    this.ctx.textAlign = 'left';
+
+    legendItems.forEach((item, index) => {
+      const x = startX + index * itemWidth;
+
+      // Draw color swatch
+      this.ctx.fillStyle = item.color;
+      this.ctx.fillRect(x, y - 8, 12, 12);
+
+      // Draw label
+      this.ctx.fillStyle = '#AAA';
+      this.ctx.fillText(item.label, x + 16, y + 2);
+    });
   }
 }

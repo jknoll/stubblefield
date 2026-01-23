@@ -34,12 +34,12 @@
       <div class="pattern-selector">
         <label for="pattern-select">Pattern:</label>
         <select id="pattern-select">
+          <option value="funkydrummer" selected>Funky Drummer (Intro Break)</option>
           <option value="rock">Rock Beat</option>
           <option value="house">House Beat (4-on-the-floor)</option>
           <option value="hiphop">Hip-Hop Break</option>
           <option value="amen">Amen Break</option>
           <option value="funk">Funky Groove</option>
-          <option value="funkydrummer">Funky Drummer (Intro Break)</option>
         </select>
         <label for="loop-count">Loops:</label>
         <select id="loop-count">
@@ -103,9 +103,28 @@
 
     <!-- Control Section -->
     <section class="controls-container">
-      <button id="start-btn" class="btn btn-primary">Start</button>
-      <button id="pause-btn" class="btn btn-secondary" disabled>Pause</button>
-      <button id="reset-btn" class="btn btn-secondary">Reset</button>
+      <button id="game-btn" class="btn btn-primary">
+        <span class="btn-icon">&#9658;</span> Start
+      </button>
+    </section>
+
+    <!-- Completion Panel -->
+    <section id="completion-panel" class="completion-panel hidden">
+      <h3>Attempt Complete!</h3>
+      <div class="final-stats">
+        <div class="stat-item">
+          <label>Final Score</label>
+          <span id="final-score" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+          <label>Grade</label>
+          <span id="final-grade" class="stat-value grade">-</span>
+        </div>
+        <div class="stat-item">
+          <label>Max Combo</label>
+          <span id="final-combo" class="stat-value">0</span>
+        </div>
+      </div>
     </section>
 
     <!-- Audio Mixer Section -->
@@ -121,6 +140,26 @@
           <label for="drums-volume">Practice Track</label>
           <input type="range" id="drums-volume" min="0" max="100" value="70" step="1">
           <span id="drums-volume-display">70%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Input Settings Section -->
+    <section class="input-settings-container">
+      <h3>Input Settings</h3>
+      <div class="input-settings-controls">
+        <div class="input-setting">
+          <label for="debounce-slider">Double-Trigger Filter</label>
+          <p class="setting-description">Filter out rapid double-hits from unreliable hardware (kick pedals, etc.)</p>
+          <div class="slider-row">
+            <span class="slider-label">Off</span>
+            <input type="range" id="debounce-slider" min="0" max="100" value="30" step="5">
+            <span class="slider-label">100ms</span>
+          </div>
+          <div class="setting-value">
+            <span id="debounce-display">30ms</span>
+            <span id="debounce-stats" class="debounce-stats"></span>
+          </div>
         </div>
       </div>
     </section>

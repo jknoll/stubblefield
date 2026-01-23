@@ -36,15 +36,16 @@ The game uses `requestAnimationFrame` for the main loop, coordinated through:
 
 ```
 MidiHandler ──┐
-              ├──→ DrumGame.handleMidiInput() → TimingJudge.findMatchingNote()
-KeyboardHandler┘    → TimingJudge.judgeHit() → ScoreManager.recordJudgment()
-                    → GameState.recordHit() → NoteRenderer (visual feedback)
+              ├──→ InputDebouncer → DrumGame.handleMidiInput() → TimingJudge.findMatchingNote()
+KeyboardHandler┘                    → TimingJudge.judgeHit() → ScoreManager.recordJudgment()
+                                    → GameState.recordHit() → NoteRenderer (visual feedback)
 ```
 
 ### Module Responsibilities
 
-- **MidiHandler** - Web MIDI API wrapper, filters for Note On events, debounces double-hits
+- **MidiHandler** - Web MIDI API wrapper, filters for Note On events
 - **KeyboardHandler** - Keyboard input handler, maps keys to MIDI notes, prevents key repeat
+- **InputDebouncer** - Filters double-triggers from unreliable hardware (defective kick pedals, etc.); configurable window (0-100ms) via UI slider
 - **TimingJudge** - Evaluates hit timing against windows defined in `constants.js`, finds best matching note within active notes
 - **ScoreManager** - Tracks score with combo multipliers, calculates accuracy and letter grades
 - **AudioManager** - Web Audio API synthesis for drum sounds and metronome clicks (no audio files)
@@ -66,6 +67,22 @@ Notes flow horizontally from right to left. The hit line is a vertical line on t
 ### Note Lifecycle
 
 Notes move through states: `upcomingNotes` → `activeNotes` (when within lookahead window) → `hitNotes` or `missedNotes`. Each note has `judged`, `hit`, and `sounded` flags to track state.
+
+### Accuracy Terminology
+
+- **Rushing**: Hitting a note early (before its scheduled time); negative `timeDiff` value
+- **Dragging**: Hitting a note late (after its scheduled time); positive `timeDiff` value
+- **Wrong Pad**: Hitting an incorrect drum when a note is expected (e.g., hitting snare when kick was expected)
+- **Missed**: A note that passed without being hit within the timing window
+- **Per-note accuracy**: Tracking of timing offset (`timeDiff`), rushing/dragging flags, and judgment for each individual note in the pattern; stored in `note.accuracy` object after judgment
+
+### Completion Visualization
+
+On pattern completion, the game canvas displays a piano roll view showing all notes color-coded by accuracy:
+- **Green**: Accurate hits (PERFECT = bright, GOOD = medium)
+- **Yellow**: OK timing
+- **Orange**: Early/Late (within timing window but poor accuracy)
+- **Red**: Missed or wrong pad
 
 ## Browser Requirements
 

@@ -2,6 +2,7 @@
 
 import { MidiHandler } from './midiHandler.js';
 import { KeyboardHandler } from './keyboardHandler.js';
+import { InputDebouncer } from './inputDebouncer.js';
 import { GameState } from './gameState.js';
 import { NoteRenderer } from './noteRenderer.js';
 import { TimingJudge } from './timingJudge.js';
@@ -15,6 +16,7 @@ class DrumGame {
   constructor() {
     this.midiHandler = null;
     this.keyboardHandler = null;
+    this.inputDebouncer = null;
     this.gameState = null;
     this.noteRenderer = null;
     this.timingJudge = null;
@@ -22,10 +24,13 @@ class DrumGame {
     this.metronome = null;
     this.audioManager = null;
 
-    this.currentBPM = 120;
+    this.currentBPM = 101;
     this.currentPattern = null;
-    this.currentPatternType = 'rock';
+    this.currentPatternType = 'funkydrummer';
     this.lastBeat = 0;  // Track last beat for metronome clicks
+
+    // Game phase: 'ready' | 'playing' | 'paused' | 'complete'
+    this.gamePhase = 'ready';
 
     this.initialized = false;
   }
@@ -52,6 +57,10 @@ class DrumGame {
     // Initialize keyboard handler (always available as fallback)
     this.keyboardHandler = new KeyboardHandler();
     this.keyboardHandler.initialize();
+
+    // Initialize input debouncer for filtering double-triggers
+    // Default 30ms window - user can adjust via slider
+    this.inputDebouncer = new InputDebouncer(30);
 
     // Pre-load Funky Drummer pattern from MIDI file
     await loadFunkyDrummerPattern();
@@ -87,14 +96,22 @@ class DrumGame {
    * Set up all event handlers
    */
   setupEventHandlers() {
-    // MIDI input -> timing judge -> score manager
+    // MIDI input -> debouncer -> timing judge -> score manager
     this.midiHandler.registerNoteCallback((midiNote, velocity, timestamp) => {
-      this.handleMidiInput(midiNote, velocity, timestamp);
+      // Filter through debouncer to catch double-triggers
+      if (this.inputDebouncer.shouldAllowInput(midiNote, timestamp)) {
+        this.handleMidiInput(midiNote, velocity, timestamp);
+        this.updateDebounceStats();
+      }
     });
 
-    // Keyboard input -> same pipeline as MIDI
+    // Keyboard input -> debouncer -> same pipeline as MIDI
     this.keyboardHandler.registerNoteCallback((midiNote, velocity, timestamp) => {
-      this.handleMidiInput(midiNote, velocity, timestamp);
+      // Filter through debouncer to catch double-triggers
+      if (this.inputDebouncer.shouldAllowInput(midiNote, timestamp)) {
+        this.handleMidiInput(midiNote, velocity, timestamp);
+        this.updateDebounceStats();
+      }
     });
 
     // Device connection changes
@@ -138,17 +155,9 @@ class DrumGame {
       this.showCountdown(count);
     };
 
-    // Button handlers
-    document.getElementById('start-btn').addEventListener('click', () => {
-      this.start();
-    });
-
-    document.getElementById('pause-btn').addEventListener('click', () => {
-      this.togglePause();
-    });
-
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      this.reset();
+    // Single game button handler (state machine)
+    document.getElementById('game-btn').addEventListener('click', () => {
+      this.handleGameButtonClick();
     });
 
     // BPM control handlers
@@ -190,6 +199,13 @@ class DrumGame {
     // MIDI device selector handler
     document.getElementById('midi-device-select').addEventListener('change', (e) => {
       this.handleDeviceSelection(e.target.value);
+    });
+
+    // Debounce slider handler
+    document.getElementById('debounce-slider').addEventListener('input', (e) => {
+      const debounceMs = parseInt(e.target.value);
+      this.inputDebouncer.setDebounceWindow(debounceMs);
+      this.updateDebounceDisplay(debounceMs);
     });
   }
 
@@ -296,6 +312,46 @@ class DrumGame {
   }
 
   /**
+   * Handle game button click (state machine)
+   */
+  handleGameButtonClick() {
+    if (!this.initialized) return;
+
+    switch (this.gamePhase) {
+      case 'ready':
+        this.start();
+        break;
+      case 'playing':
+        this.pause();
+        break;
+      case 'paused':
+        this.resume();
+        break;
+      case 'complete':
+        this.reset();
+        this.start();
+        break;
+    }
+  }
+
+  /**
+   * Update game button label based on phase
+   */
+  updateGameButton() {
+    const btn = document.getElementById('game-btn');
+    if (!btn) return;
+
+    const labels = {
+      ready: '<span class="btn-icon">&#9658;</span> Start',
+      playing: '<span class="btn-icon">&#10074;&#10074;</span> Pause',
+      paused: '<span class="btn-icon">&#9658;</span> Resume',
+      complete: '<span class="btn-icon">&#9658;</span> Start'
+    };
+
+    btn.innerHTML = labels[this.gamePhase] || labels.ready;
+  }
+
+  /**
    * Start the game
    */
   async start() {
@@ -309,31 +365,47 @@ class DrumGame {
     // Resume audio context if suspended
     await this.audioManager.resume();
 
-    // Reset beat tracking
+    // Reset beat tracking for the new attempt
+    // Setting to 0 ensures the first beat (beat 1) triggers a click
     this.lastBeat = 0;
 
-    this.gameState.start();
+    // Hide completion panel if visible
+    this.hideCompletionPanel();
 
-    // Update button states
-    document.getElementById('start-btn').disabled = true;
-    document.getElementById('pause-btn').disabled = false;
+    // Clear completion view to allow normal rendering
+    this.noteRenderer.clearCompletionView();
+
+    this.gameState.start();
+    this.gamePhase = 'playing';
+    this.updateGameButton();
 
     console.log('Game started');
   }
 
   /**
-   * Toggle pause/resume
+   * Pause the game
    */
-  togglePause() {
+  pause() {
     if (!this.initialized) return;
 
-    if (this.gameState.isPaused) {
-      this.gameState.resume();
-      document.getElementById('pause-btn').textContent = 'Pause';
-    } else {
-      this.gameState.pause();
-      document.getElementById('pause-btn').textContent = 'Resume';
-    }
+    this.gameState.pause();
+    this.gamePhase = 'paused';
+    this.updateGameButton();
+
+    console.log('Game paused');
+  }
+
+  /**
+   * Resume the game
+   */
+  resume() {
+    if (!this.initialized) return;
+
+    this.gameState.resume();
+    this.gamePhase = 'playing';
+    this.updateGameButton();
+
+    console.log('Game resumed');
   }
 
   /**
@@ -346,12 +418,22 @@ class DrumGame {
     this.scoreManager.reset();
     this.timingJudge.reset();
     this.metronome.reset();
+    this.inputDebouncer.reset();
     this.lastBeat = 0;
 
-    // Update button states
-    document.getElementById('start-btn').disabled = false;
-    document.getElementById('pause-btn').disabled = true;
-    document.getElementById('pause-btn').textContent = 'Pause';
+    // Clear debounce stats display
+    const statsEl = document.getElementById('debounce-stats');
+    if (statsEl) statsEl.textContent = '';
+
+    // Hide completion panel
+    this.hideCompletionPanel();
+
+    // Clear completion view to allow normal rendering
+    this.noteRenderer.clearCompletionView();
+
+    // Update game phase
+    this.gamePhase = 'ready';
+    this.updateGameButton();
 
     // Clear canvas
     this.noteRenderer.render(this.gameState);
@@ -372,12 +454,58 @@ class DrumGame {
     console.log(`Grade: ${summary.grade}`);
     console.log(`Max Combo: ${summary.maxCombo}`);
 
-    // Show completion message
-    alert(`Pattern Complete!\n\nScore: ${summary.totalScore}\nAccuracy: ${summary.accuracy}%\nGrade: ${summary.grade}\nMax Combo: ${summary.maxCombo}`);
+    // Show completion panel instead of alert
+    this.showCompletionPanel(summary);
 
-    // Reset button states
-    document.getElementById('start-btn').disabled = false;
-    document.getElementById('pause-btn').disabled = true;
+    // Get notes with accuracy - use averaged data for multi-loop patterns
+    const { singlePatternDuration, loopCount } = this.currentPattern;
+    let notesWithAccuracy;
+    let visualizationDuration;
+
+    if (loopCount > 1) {
+      // Multi-loop: show single pattern with averaged accuracy
+      notesWithAccuracy = this.gameState.getAveragedNotesForVisualization(
+        singlePatternDuration,
+        loopCount
+      );
+      visualizationDuration = singlePatternDuration;
+      console.log(`Averaged ${this.gameState.getAllNotesWithAccuracy().length} notes across ${loopCount} loops into ${notesWithAccuracy.length} notes`);
+    } else {
+      // Single loop: show all notes
+      notesWithAccuracy = this.gameState.getAllNotesWithAccuracy();
+      visualizationDuration = this.currentPattern.duration;
+    }
+
+    // Render accuracy visualization on the game canvas
+    this.noteRenderer.renderCompletionView(notesWithAccuracy, visualizationDuration);
+
+    // Update game phase
+    this.gamePhase = 'complete';
+    this.updateGameButton();
+  }
+
+  /**
+   * Show completion panel with results
+   */
+  showCompletionPanel(summary) {
+    const panel = document.getElementById('completion-panel');
+    if (!panel) return;
+
+    document.getElementById('final-score').textContent = summary.totalScore;
+    document.getElementById('final-grade').textContent = summary.grade;
+    document.getElementById('final-combo').textContent = summary.maxCombo;
+
+    panel.classList.remove('hidden');
+  }
+
+  /**
+   * Hide completion panel
+   */
+  hideCompletionPanel() {
+    const panel = document.getElementById('completion-panel');
+    if (panel) {
+      panel.classList.add('hidden');
+    }
   }
 
   /**
@@ -466,6 +594,29 @@ class DrumGame {
   }
 
   /**
+   * Update debounce display value
+   */
+  updateDebounceDisplay(debounceMs) {
+    const display = document.getElementById('debounce-display');
+    if (display) {
+      display.textContent = debounceMs === 0 ? 'Off' : `${debounceMs}ms`;
+    }
+  }
+
+  /**
+   * Update debounce statistics display
+   */
+  updateDebounceStats() {
+    const statsEl = document.getElementById('debounce-stats');
+    if (statsEl && this.inputDebouncer) {
+      const stats = this.inputDebouncer.getStats();
+      if (stats.filteredInputs > 0) {
+        statsEl.textContent = `(${stats.filteredInputs} double-triggers filtered)`;
+      }
+    }
+  }
+
+  /**
    * Change BPM and regenerate pattern
    */
   changeBPM(newBPM) {
@@ -530,8 +681,9 @@ class DrumGame {
    * Regenerate game state with current pattern
    */
   regenerateGameState() {
-    // Update metronome
+    // Update metronome and reset beat tracking
     this.metronome.setBPM(this.currentBPM);
+    this.lastBeat = 0;
 
     // Recreate game state with new pattern
     this.gameState = new GameState(this.currentPattern);

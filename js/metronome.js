@@ -16,11 +16,17 @@ export class Metronome {
    * @returns {Object} Beat info { beatNumber, phase }
    */
   update(currentTime) {
-    // Calculate which beat we're on
+    // Calculate which beat we're on, handling negative times (countdown)
     const beatNumber = Math.floor(currentTime / this.beatDuration);
-    const beatPhase = (currentTime % this.beatDuration) / this.beatDuration;
 
-    this.currentBeat = (beatNumber % 4) + 1; // 1-4 for 4/4 time
+    // Proper modulo that handles negative numbers correctly
+    // JavaScript's % operator doesn't work correctly with negatives for cycling
+    let beatInBar = ((beatNumber % 4) + 4) % 4;  // Always 0-3
+    this.currentBeat = beatInBar + 1; // 1-4 for 4/4 time
+
+    // Calculate beat phase (0-1), handling negative times
+    let beatPhase = (currentTime % this.beatDuration) / this.beatDuration;
+    if (beatPhase < 0) beatPhase += 1;  // Normalize negative phase
 
     return {
       beatNumber: this.currentBeat,

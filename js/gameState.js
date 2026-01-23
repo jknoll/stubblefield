@@ -37,8 +37,11 @@ export class GameState {
     if (this.isPlaying) return;
 
     // Start with negative time for lead-in countdown
+    // Calculate lead-in time based on BPM to ensure beat alignment
     if (this.currentTime === 0) {
-      this.currentTime = -GAME_CONFIG.LEAD_IN_TIME;
+      const beatDuration = (60 / this.pattern.bpm) * 1000;
+      this.leadInTime = GAME_CONFIG.COUNTDOWN_BEATS * beatDuration;
+      this.currentTime = -this.leadInTime;
       this.isCountingDown = true;
     }
 
@@ -47,7 +50,7 @@ export class GameState {
     this.isPlaying = true;
     this.isPaused = false;
 
-    console.log('Game started with countdown');
+    console.log(`Game started with ${GAME_CONFIG.COUNTDOWN_BEATS} beat countdown (${Math.round(this.leadInTime)}ms at ${this.pattern.bpm} BPM)`);
     this.gameLoop();
   }
 
@@ -144,6 +147,17 @@ export class GameState {
       if (note.time < missThreshold && !note.judged) {
         // Note passed without being hit
         note.judged = true;
+
+        // Add accuracy data for missed note
+        note.accuracy = {
+          timeDiff: null,
+          rushing: false,
+          dragging: false,
+          wrongPad: false,
+          missed: true,
+          judgment: 'MISS'
+        };
+
         this.missedNotes.push(note);
 
         // Notify about miss (will be handled by scoreManager)
@@ -167,6 +181,16 @@ export class GameState {
     note.hit = true;
     note.judgment = judgment;
 
+    // Add per-note accuracy data
+    note.accuracy = {
+      timeDiff: judgment.timeDiff || 0,
+      rushing: judgment.isEarly || false,
+      dragging: judgment.isLate || false,
+      wrongPad: !judgment.isCorrect,
+      missed: false,
+      judgment: judgment.judgment
+    };
+
     // Move from active to hit
     const index = this.activeNotes.indexOf(note);
     if (index > -1) {
@@ -174,6 +198,136 @@ export class GameState {
     }
 
     this.hitNotes.push(note);
+  }
+
+  /**
+   * Get all notes with their accuracy data (for visualization)
+   * @returns {Array} All notes sorted by time with accuracy info
+   */
+  getAllNotesWithAccuracy() {
+    return [...this.hitNotes, ...this.missedNotes].sort((a, b) => a.time - b.time);
+  }
+
+  /**
+   * Get notes with averaged accuracy data for multi-loop patterns
+   * Groups notes by their position within a single loop and averages accuracy
+   * @param {number} singlePatternDuration - Duration of a single pattern instance
+   * @param {number} loopCount - Number of loops
+   * @returns {Array} Single pattern's worth of notes with averaged accuracy
+   */
+  getAveragedNotesForVisualization(singlePatternDuration, loopCount) {
+    if (loopCount <= 1) {
+      return this.getAllNotesWithAccuracy();
+    }
+
+    const allNotes = this.getAllNotesWithAccuracy();
+
+    // Group notes by their position within a single loop
+    // Use a tolerance for floating point comparison
+    const tolerance = 10; // 10ms tolerance for grouping
+    const noteGroups = new Map();
+
+    allNotes.forEach(note => {
+      // Calculate position within single pattern
+      const positionInPattern = note.time % singlePatternDuration;
+
+      // Find existing group or create new one
+      let foundGroup = null;
+      for (const [key, group] of noteGroups.entries()) {
+        if (Math.abs(key - positionInPattern) < tolerance && group[0].midiNote === note.midiNote) {
+          foundGroup = key;
+          break;
+        }
+      }
+
+      if (foundGroup !== null) {
+        noteGroups.get(foundGroup).push(note);
+      } else {
+        noteGroups.set(positionInPattern, [note]);
+      }
+    });
+
+    // Average the accuracy data for each group
+    const averagedNotes = [];
+
+    for (const [positionInPattern, notes] of noteGroups.entries()) {
+      // Create averaged note
+      const firstNote = notes[0];
+
+      // Count accuracy types
+      let perfectCount = 0;
+      let goodCount = 0;
+      let okCount = 0;
+      let earlyCount = 0;
+      let lateCount = 0;
+      let missCount = 0;
+      let wrongPadCount = 0;
+      let totalTimeDiff = 0;
+      let timeDiffCount = 0;
+
+      notes.forEach(n => {
+        if (n.accuracy) {
+          if (n.accuracy.missed) missCount++;
+          else if (n.accuracy.wrongPad) wrongPadCount++;
+          else {
+            switch (n.accuracy.judgment) {
+              case 'PERFECT': perfectCount++; break;
+              case 'GOOD': goodCount++; break;
+              case 'OK': okCount++; break;
+              case 'EARLY': earlyCount++; break;
+              case 'LATE': lateCount++; break;
+            }
+          }
+
+          if (n.accuracy.timeDiff !== null) {
+            totalTimeDiff += n.accuracy.timeDiff;
+            timeDiffCount++;
+          }
+        } else {
+          missCount++;
+        }
+      });
+
+      // Determine overall judgment based on most common outcome
+      let avgJudgment;
+      const total = notes.length;
+      const hitCount = total - missCount - wrongPadCount;
+
+      if (missCount >= total / 2) {
+        avgJudgment = 'MISS';
+      } else if (wrongPadCount >= total / 2) {
+        avgJudgment = 'WRONG_NOTE';
+      } else if (perfectCount >= hitCount / 2) {
+        avgJudgment = 'PERFECT';
+      } else if (goodCount >= hitCount / 3) {
+        avgJudgment = 'GOOD';
+      } else if (okCount >= hitCount / 3) {
+        avgJudgment = 'OK';
+      } else if (earlyCount > lateCount) {
+        avgJudgment = 'EARLY';
+      } else if (lateCount > earlyCount) {
+        avgJudgment = 'LATE';
+      } else {
+        avgJudgment = 'OK';
+      }
+
+      averagedNotes.push({
+        time: positionInPattern,
+        midiNote: firstNote.midiNote,
+        accuracy: {
+          timeDiff: timeDiffCount > 0 ? totalTimeDiff / timeDiffCount : null,
+          rushing: earlyCount > lateCount,
+          dragging: lateCount > earlyCount,
+          wrongPad: wrongPadCount >= total / 2,
+          missed: missCount >= total / 2,
+          judgment: avgJudgment,
+          // Extra info for debugging
+          loopResults: notes.map(n => n.accuracy?.judgment || 'MISS')
+        }
+      });
+    }
+
+    return averagedNotes.sort((a, b) => a.time - b.time);
   }
 
   /**
