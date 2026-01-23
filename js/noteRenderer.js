@@ -444,7 +444,7 @@ export class NoteRenderer {
 
   /**
    * Render completion view showing all notes with accuracy coloring
-   * Like the normal gameplay view but frozen and scaled to fit entire pattern
+   * Uses same spacing as during playback (SCROLL_SPEED), not scaled to fit
    * @param {Array} notes - All notes with accuracy data
    * @param {number} patternDuration - Total duration of the pattern
    */
@@ -461,22 +461,37 @@ export class NoteRenderer {
     // Draw lane dividers
     this.drawLanes();
 
-    // Calculate scale to fit entire pattern on screen
-    // Leave margin on left for lane labels, small margin on right
-    const leftMargin = 60;
-    const rightMargin = 10;
-    const availableWidth = this.canvas.width - leftMargin - rightMargin;
+    // Draw hit line (same as during playback)
+    this.drawHitLine();
 
-    // Scale: pixels per ms to fit entire pattern
-    const timeScale = availableWidth / patternDuration;
+    // Use same positioning as during playback:
+    // - Hit line is at center (this.config.HIT_LINE_X)
+    // - Notes positioned using SCROLL_SPEED
+    // - Show notes as if viewing from end of pattern (all notes to left of hit line)
+    const hitLineX = this.config.HIT_LINE_X;
+    const scrollSpeed = this.baseConfig.SCROLL_SPEED;
 
-    // Draw each note scaled to fit
+    // Draw each note using playback-consistent positioning
     notes.forEach(note => {
       const noteInfo = MIDI_NOTE_MAP[note.midiNote];
       if (!noteInfo) return;
 
-      // Calculate X position: scale note time to fit canvas
-      const xPosition = leftMargin + (note.time * timeScale);
+      // Calculate X position same as during playback
+      // At end of pattern, timeUntilHit = note.time - patternDuration (negative, so notes are left of hit line)
+      const timeUntilHit = note.time - patternDuration;
+      const xPosition = hitLineX + (timeUntilHit * scrollSpeed);
+
+      // Apply accuracy offset if note was hit (same as real-time feedback)
+      let finalX = xPosition;
+      if (note.accuracy && !note.accuracy.missed) {
+        const accuracyOffset = (note.accuracy.timeDiff || 0) * scrollSpeed;
+        finalX = xPosition + accuracyOffset;
+      }
+
+      // Skip notes that are way off screen
+      if (finalX < -this.baseConfig.NOTE_WIDTH || finalX > this.canvas.width + this.baseConfig.NOTE_WIDTH) {
+        return;
+      }
 
       // Calculate Y position based on lane
       const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
@@ -484,7 +499,7 @@ export class NoteRenderer {
       // Get accuracy-based color
       const color = this.getAccuracyColor(note.accuracy);
 
-      // Use fixed note width matching playback (notes are point-in-time events)
+      // Use fixed note width matching playback
       const noteWidth = this.baseConfig.NOTE_WIDTH;
 
       // Draw note rectangle with glow
@@ -494,7 +509,7 @@ export class NoteRenderer {
 
       const padding = 4;
       this.ctx.fillRect(
-        xPosition - noteWidth / 2,
+        finalX - noteWidth / 2,
         yPosition + padding,
         noteWidth,
         this.config.LANE_HEIGHT - padding * 2
@@ -504,7 +519,7 @@ export class NoteRenderer {
       this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
       this.ctx.lineWidth = 1;
       this.ctx.strokeRect(
-        xPosition - noteWidth / 2,
+        finalX - noteWidth / 2,
         yPosition + padding,
         noteWidth,
         this.config.LANE_HEIGHT - padding * 2
