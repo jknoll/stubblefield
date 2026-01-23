@@ -35,6 +35,10 @@ class DrumGame {
     // Track if completion view is showing (for resize handling)
     this.showingCompletionView = false;
 
+    // Infinite loop mode tracking
+    this.isInfiniteLoop = false;
+    this.infiniteLoopIteration = 0;  // How many loops completed
+
     this.initialized = false;
   }
 
@@ -139,40 +143,12 @@ class DrumGame {
       this.updateDeviceStatus();
     });
 
-    // Game state updates -> renderer
-    this.gameState.onUpdate = () => {
-      this.noteRenderer.render(this.gameState);
-      const beatInfo = this.metronome.update(this.gameState.currentTime);
-      this.metronome.render(beatInfo);
-
-      // Play metronome click on beat changes
-      if (beatInfo.beatNumber !== this.lastBeat) {
-        this.lastBeat = beatInfo.beatNumber;
-        this.audioManager.playMetronomeClick(beatInfo.beatNumber);
-      }
-
-      // Schedule drum sounds for upcoming notes
-      this.scheduleNoteSounds();
-    };
-
-    // Game state miss callback
-    this.gameState.onMiss = (note) => {
-      this.scoreManager.recordMiss();
-    };
-
-    // Pattern complete
-    this.gameState.onPatternComplete = () => {
-      this.handlePatternComplete();
-    };
+    // Attach game state callbacks (update, miss, complete, countdown)
+    this.attachGameStateCallbacks();
 
     // Score updates -> UI
     this.scoreManager.onScoreUpdate = (scoreData) => {
       this.updateScoreDisplay(scoreData);
-    };
-
-    // Countdown updates
-    this.gameState.onCountdown = (count) => {
-      this.showCountdown(count);
     };
 
     // Single game button handler (state machine)
@@ -213,7 +189,7 @@ class DrumGame {
 
     // Loop count selector handler
     document.getElementById('loop-count').addEventListener('change', (e) => {
-      this.changeLoopCount(parseInt(e.target.value));
+      this.changeLoopCount(e.target.value);
     });
 
     // MIDI device selector handler
@@ -271,10 +247,25 @@ class DrumGame {
 
   /**
    * Get current loop count from UI
+   * Returns the actual loop count, or 4 for infinite mode (we'll add more dynamically)
    */
   getLoopCount() {
     const loopSelect = document.getElementById('loop-count');
-    return loopSelect ? parseInt(loopSelect.value) : 4;
+    if (!loopSelect) return 4;
+
+    const value = loopSelect.value;
+    if (value === 'infinite') {
+      return 4; // Start with 4 loops, add more dynamically
+    }
+    return parseInt(value);
+  }
+
+  /**
+   * Check if infinite loop mode is selected
+   */
+  isInfiniteLoopMode() {
+    const loopSelect = document.getElementById('loop-count');
+    return loopSelect && loopSelect.value === 'infinite';
   }
 
   /**
@@ -382,7 +373,12 @@ class DrumGame {
         this.start();
         break;
       case 'playing':
-        this.pause();
+        // In infinite loop mode, stop and show results instead of pausing
+        if (this.isInfiniteLoop) {
+          this.stopInfiniteLoop();
+        } else {
+          this.pause();
+        }
         break;
       case 'paused':
         this.resume();
@@ -400,6 +396,12 @@ class DrumGame {
   updateGameButton() {
     const btn = document.getElementById('game-btn');
     if (!btn) return;
+
+    // In infinite loop mode, show "Stop" instead of "Pause"
+    if (this.gamePhase === 'playing' && this.isInfiniteLoop) {
+      btn.innerHTML = '<span class="btn-icon">&#9632;</span> Stop';
+      return;
+    }
 
     const labels = {
       ready: '<span class="btn-icon">&#9658;</span> Start',
@@ -429,6 +431,10 @@ class DrumGame {
     // Setting to 0 ensures the first beat (beat 1) triggers a click
     this.lastBeat = 0;
 
+    // Track infinite loop mode
+    this.isInfiniteLoop = this.isInfiniteLoopMode();
+    this.infiniteLoopIteration = 0;
+
     // Hide completion panel if visible
     this.hideCompletionPanel();
 
@@ -439,7 +445,7 @@ class DrumGame {
     this.gamePhase = 'playing';
     this.updateGameButton();
 
-    console.log('Game started');
+    console.log(`Game started${this.isInfiniteLoop ? ' (infinite loop mode)' : ''}`);
   }
 
   /**
@@ -469,6 +475,64 @@ class DrumGame {
   }
 
   /**
+   * Stop infinite loop and show accumulated results
+   */
+  stopInfiniteLoop() {
+    if (!this.initialized) return;
+
+    console.log(`Stopping infinite loop after ${this.infiniteLoopIteration + 1} iterations`);
+
+    // Stop the game state
+    this.gameState.stop();
+    this.isInfiniteLoop = false;
+
+    // Hide countdown overlay if still visible
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    if (countdownOverlay) countdownOverlay.classList.remove('show');
+
+    const summary = this.scoreManager.getSummary();
+
+    console.log('Infinite Loop Complete!');
+    console.log(`Total Iterations: ${this.infiniteLoopIteration + 1}`);
+    console.log(`Final Score: ${summary.totalScore}`);
+    console.log(`Accuracy: ${summary.accuracy}%`);
+    console.log(`Grade: ${summary.grade}`);
+    console.log(`Max Combo: ${summary.maxCombo}`);
+
+    // Show completion panel
+    this.showCompletionPanel(summary);
+
+    // Get notes with accuracy - use averaged data across all loops
+    const { singlePatternDuration } = this.currentPattern;
+    const totalLoops = this.currentPattern.loopCount;
+
+    let notesWithAccuracy;
+    let visualizationDuration;
+
+    if (totalLoops > 1) {
+      // Multi-loop: show single pattern with averaged accuracy
+      notesWithAccuracy = this.gameState.getAveragedNotesForVisualization(
+        singlePatternDuration,
+        totalLoops
+      );
+      visualizationDuration = singlePatternDuration;
+      console.log(`Averaged ${this.gameState.getAllNotesWithAccuracy().length} notes across ${totalLoops} loops into ${notesWithAccuracy.length} notes`);
+    } else {
+      // Single loop: show all notes
+      notesWithAccuracy = this.gameState.getAllNotesWithAccuracy();
+      visualizationDuration = this.currentPattern.duration;
+    }
+
+    // Render accuracy visualization on the game canvas
+    this.noteRenderer.renderCompletionView(notesWithAccuracy, visualizationDuration);
+    this.showingCompletionView = true;
+
+    // Update game phase
+    this.gamePhase = 'complete';
+    this.updateGameButton();
+  }
+
+  /**
    * Reset the game
    */
   reset() {
@@ -480,6 +544,19 @@ class DrumGame {
     this.metronome.reset();
     this.inputDebouncer.reset();
     this.lastBeat = 0;
+
+    // Reset infinite loop tracking
+    this.isInfiniteLoop = false;
+    this.infiniteLoopIteration = 0;
+
+    // Regenerate pattern with original loop count (in case infinite mode modified it)
+    const patternInfo = PATTERNS[this.currentPatternType];
+    const loopsOrBars = patternInfo.isLoopBased ? this.getLoopCount() : patternInfo.bars;
+    this.currentPattern = createPattern(this.currentPatternType, this.currentBPM, loopsOrBars);
+    this.gameState = new GameState(this.currentPattern);
+
+    // Reattach callbacks
+    this.attachGameStateCallbacks();
 
     // Clear debounce stats display
     const statsEl = document.getElementById('debounce-stats');
@@ -514,6 +591,16 @@ class DrumGame {
     // Hide countdown overlay if still visible
     const countdownOverlay = document.getElementById('countdown-overlay');
     if (countdownOverlay) countdownOverlay.classList.remove('show');
+
+    // In infinite loop mode, add more notes and continue playing
+    if (this.isInfiniteLoop) {
+      this.infiniteLoopIteration++;
+      console.log(`Infinite loop: completed iteration ${this.infiniteLoopIteration}, adding more notes...`);
+
+      // Add more notes for the next set of loops
+      this.appendMoreNotesToInfiniteLoop();
+      return; // Don't show completion, keep playing
+    }
 
     const summary = this.scoreManager.getSummary();
 
@@ -552,6 +639,40 @@ class DrumGame {
     // Update game phase
     this.gamePhase = 'complete';
     this.updateGameButton();
+  }
+
+  /**
+   * Append more notes to game state for infinite loop continuation
+   */
+  appendMoreNotesToInfiniteLoop() {
+    const { singlePatternDuration } = this.currentPattern;
+    const patternInfo = PATTERNS[this.currentPatternType];
+
+    // Create a new pattern with 4 more loops
+    const additionalLoops = 4;
+    const additionalPattern = createPattern(this.currentPatternType, this.currentBPM, additionalLoops);
+
+    // Calculate the time offset for the new notes
+    const timeOffset = this.currentPattern.duration;
+
+    // Add the new notes with adjusted timing
+    additionalPattern.notes.forEach((note, i) => {
+      const newNote = {
+        ...note,
+        time: note.time + timeOffset,
+        id: `${note.id}_inf${this.infiniteLoopIteration}`,
+        hit: false,
+        judged: false,
+        sounded: false
+      };
+      this.gameState.upcomingNotes.push(newNote);
+    });
+
+    // Update pattern duration to include new notes
+    this.currentPattern.duration += additionalPattern.duration;
+    this.currentPattern.loopCount += additionalLoops;
+
+    console.log(`Added ${additionalPattern.notes.length} notes, total duration now ${this.currentPattern.duration}ms`);
   }
 
   /**
@@ -747,7 +868,7 @@ class DrumGame {
   /**
    * Change loop count and regenerate pattern
    */
-  changeLoopCount(loops) {
+  changeLoopCount(loopValue) {
     // Don't change if game is playing
     if (this.gameState && this.gameState.isPlaying) {
       console.log('Cannot change loops while game is playing');
@@ -755,11 +876,13 @@ class DrumGame {
     }
 
     const patternInfo = PATTERNS[this.currentPatternType];
+    const isInfinite = loopValue === 'infinite';
+    const loops = isInfinite ? 4 : parseInt(loopValue);  // Start with 4 for infinite
     const loopsOrBars = patternInfo.isLoopBased ? loops : patternInfo.bars;
     this.currentPattern = createPattern(this.currentPatternType, this.currentBPM, loopsOrBars);
 
     this.regenerateGameState();
-    console.log(`Loop count changed to ${loops}`);
+    console.log(`Loop count changed to ${isInfinite ? '∞ (infinite)' : loops}`);
   }
 
   /**
@@ -798,6 +921,20 @@ class DrumGame {
     this.gameState = new GameState(this.currentPattern);
 
     // Reattach callbacks
+    this.attachGameStateCallbacks();
+
+    // Update display
+    this.updateBPMDisplay();
+
+    // Render initial state
+    this.noteRenderer.render(this.gameState);
+    this.metronome.render({ beatNumber: 1, phase: 0 });
+  }
+
+  /**
+   * Attach all callbacks to the game state
+   */
+  attachGameStateCallbacks() {
     this.gameState.onUpdate = () => {
       this.noteRenderer.render(this.gameState);
       const beatInfo = this.metronome.update(this.gameState.currentTime);
@@ -824,13 +961,6 @@ class DrumGame {
     this.gameState.onCountdown = (count) => {
       this.showCountdown(count);
     };
-
-    // Update display
-    this.updateBPMDisplay();
-
-    // Render initial state
-    this.noteRenderer.render(this.gameState);
-    this.metronome.render({ beatNumber: 1, phase: 0 });
   }
 
   /**
