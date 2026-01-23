@@ -32,6 +32,9 @@ class DrumGame {
     // Game phase: 'ready' | 'playing' | 'paused' | 'complete'
     this.gamePhase = 'ready';
 
+    // Track if completion view is showing (for resize handling)
+    this.showingCompletionView = false;
+
     this.initialized = false;
   }
 
@@ -100,6 +103,10 @@ class DrumGame {
     // Update UI
     this.updateDeviceStatus();
     this.updateBPMDisplay();
+
+    // Render initial state
+    this.noteRenderer.render(this.gameState);
+    this.metronome.render({ beatNumber: 1, phase: 0 });
 
     this.initialized = true;
     console.log('Game initialized successfully');
@@ -220,6 +227,46 @@ class DrumGame {
       this.inputDebouncer.setDebounceWindow(debounceMs);
       this.updateDebounceDisplay(debounceMs);
     });
+
+    // Window resize handler for responsive canvas
+    window.addEventListener('resize', () => {
+      this.handleResize();
+    });
+  }
+
+  /**
+   * Handle window resize - update canvas dimensions
+   */
+  handleResize() {
+    if (!this.noteRenderer) return;
+
+    // Update canvas size
+    this.noteRenderer.updateCanvasSize();
+
+    // Re-render current state
+    if (this.gameState) {
+      if (this.showingCompletionView) {
+        // Re-render completion view if it was showing
+        const { singlePatternDuration, loopCount } = this.currentPattern;
+        let notesWithAccuracy;
+        let visualizationDuration;
+
+        if (loopCount > 1) {
+          notesWithAccuracy = this.gameState.getAveragedNotesForVisualization(
+            singlePatternDuration,
+            loopCount
+          );
+          visualizationDuration = singlePatternDuration;
+        } else {
+          notesWithAccuracy = this.gameState.getAllNotesWithAccuracy();
+          visualizationDuration = this.currentPattern.duration;
+        }
+
+        this.noteRenderer.renderCompletionView(notesWithAccuracy, visualizationDuration);
+      } else {
+        this.noteRenderer.render(this.gameState);
+      }
+    }
   }
 
   /**
@@ -443,6 +490,7 @@ class DrumGame {
 
     // Clear completion view to allow normal rendering
     this.noteRenderer.clearCompletionView();
+    this.showingCompletionView = false;
 
     // Update game phase
     this.gamePhase = 'ready';
@@ -491,6 +539,7 @@ class DrumGame {
 
     // Render accuracy visualization on the game canvas
     this.noteRenderer.renderCompletionView(notesWithAccuracy, visualizationDuration);
+    this.showingCompletionView = true;
 
     // Update game phase
     this.gamePhase = 'complete';
@@ -550,7 +599,7 @@ class DrumGame {
 
     // Group patterns by category
     for (const category of categories) {
-      const categoryPatterns = patterns.filter(p => p.category === category && !p.isFill);
+      const categoryPatterns = patterns.filter(p => p.category === category);
 
       if (categoryPatterns.length === 0) continue;
 

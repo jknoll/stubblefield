@@ -2,7 +2,7 @@
 
 .game-container {
   position: relative;
-  display: inline-block;
+  width: 100%;
   margin: 0 auto 20px;
   background: #000;
   border-radius: 8px;

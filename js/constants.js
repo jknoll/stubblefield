@@ -51,10 +51,12 @@ export const GAME_CONFIG = {
   SCROLL_SPEED: 0.2,         // Pixels per ms
   NOTE_WIDTH: 20,            // Width of note rectangles (horizontal dimension)
   LANE_HEIGHT: 60,           // Height of each drum lane
-  HIT_LINE_X: 100,           // X position of the hit line (from left edge)
+  HIT_LINE_X: 400,           // X position of the hit line - dynamically set to canvas center
   LOOKAHEAD_TIME: 3000,      // Show notes 3 seconds ahead
-  CANVAS_WIDTH: 800,         // Wide for horizontal scrolling
+  CANVAS_WIDTH: 800,         // Default width - will be dynamic
   CANVAS_HEIGHT: 360,        // 6 lanes × 60px
+  CANVAS_MIN_WIDTH: 400,     // Minimum canvas width
+  CANVAS_MAX_WIDTH: 1600,    // Maximum canvas width
   COMBO_MULTIPLIER: 0.1,     // 10% bonus per combo
   COUNTDOWN_BEATS: 8         // Number of beats to count down (lead-in time calculated from BPM)
 };

@@ -6,7 +6,10 @@ export class NoteRenderer {
   constructor(canvasElement) {
     this.canvas = canvasElement;
     this.ctx = canvasElement.getContext('2d');
-    this.config = GAME_CONFIG;
+    this.baseConfig = GAME_CONFIG;
+
+    // Dynamic config that can change with resize
+    this.config = { ...GAME_CONFIG };
 
     // Recent hit feedback for display
     this.recentHits = [];
@@ -21,11 +24,37 @@ export class NoteRenderer {
    * Set up canvas dimensions and initial draw
    */
   setupCanvas() {
-    this.canvas.width = this.config.CANVAS_WIDTH;
-    this.canvas.height = this.config.CANVAS_HEIGHT;
+    this.updateCanvasSize();
 
     // Set rendering quality
     this.ctx.imageSmoothingEnabled = true;
+  }
+
+  /**
+   * Update canvas size based on container width
+   * Call this on window resize
+   */
+  updateCanvasSize() {
+    // Get available width from container
+    const container = this.canvas.parentElement;
+    const containerWidth = container ? container.clientWidth : this.baseConfig.CANVAS_WIDTH;
+
+    // Constrain width between min and max
+    const newWidth = Math.max(
+      this.baseConfig.CANVAS_MIN_WIDTH,
+      Math.min(this.baseConfig.CANVAS_MAX_WIDTH, containerWidth - 4) // -4 for border
+    );
+
+    // Update canvas dimensions
+    this.canvas.width = newWidth;
+    this.canvas.height = this.baseConfig.CANVAS_HEIGHT;
+
+    // Update dynamic config
+    this.config.CANVAS_WIDTH = newWidth;
+    // Center the hit line
+    this.config.HIT_LINE_X = Math.floor(newWidth / 2);
+
+    return newWidth;
   }
 
   /**
@@ -48,13 +77,151 @@ export class NoteRenderer {
     // Draw hit line
     this.drawHitLine();
 
-    // Draw active notes
+    // Draw active notes (upcoming, not yet hit)
     gameState.activeNotes.forEach(note => {
       this.drawNote(note, gameState.currentTime);
     });
 
+    // Draw hit notes with accuracy-based positioning (on left side of hit line)
+    this.drawHitNotesWithAccuracy(gameState.hitNotes, gameState.currentTime);
+
+    // Draw missed notes (faded, at their actual position on left side)
+    this.drawMissedNotes(gameState.missedNotes, gameState.currentTime);
+
     // Draw recent hit effects
     this.drawHitEffects(gameState.currentTime);
+  }
+
+  /**
+   * Draw hit notes with X-offset based on timing accuracy
+   * Notes that were hit early (rushing) appear further left
+   * Notes that were hit late (dragging) appear closer to hit line
+   * @param {Array} hitNotes - Array of hit notes with accuracy data
+   * @param {number} currentTime - Current game time
+   */
+  drawHitNotesWithAccuracy(hitNotes, currentTime) {
+    const maxVisibleTime = 2000; // Keep hit notes visible for 2 seconds after they pass
+
+    hitNotes.forEach(note => {
+      const noteInfo = MIDI_NOTE_MAP[note.midiNote];
+      if (!noteInfo) return;
+
+      const timeSinceHit = currentTime - note.time;
+
+      // Only show notes that haven't faded out yet
+      if (timeSinceHit > maxVisibleTime) return;
+
+      // Base X position (where the note would be at its scheduled time)
+      const baseX = this.calculateXPosition(note.time, currentTime);
+
+      // Don't draw if way off screen to the left
+      if (baseX < -100) return;
+
+      // Apply accuracy offset: positive timeDiff (late) = note closer to hit line
+      // negative timeDiff (early) = note further from hit line
+      const accuracyOffset = note.accuracy ? (note.accuracy.timeDiff || 0) * this.config.SCROLL_SPEED : 0;
+      const xPosition = baseX + accuracyOffset;
+
+      // Calculate Y position based on lane
+      const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
+
+      // Fade out gradually
+      const fadeProgress = Math.min(timeSinceHit / maxVisibleTime, 1);
+      const alpha = 1 - (fadeProgress * 0.7); // Fade to 30% opacity
+
+      // Get color based on accuracy
+      const color = this.getAccuracyColor(note.accuracy);
+
+      // Draw note with accuracy color
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = color;
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowColor = color;
+
+      const padding = 4;
+      this.ctx.fillRect(
+        xPosition,
+        yPosition + padding,
+        this.config.NOTE_WIDTH,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+
+      // Draw note border
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(
+        xPosition,
+        yPosition + padding,
+        this.config.NOTE_WIDTH,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+
+      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = 1.0;
+    });
+  }
+
+  /**
+   * Draw missed notes (faded red, at their actual position)
+   * @param {Array} missedNotes - Array of missed notes
+   * @param {number} currentTime - Current game time
+   */
+  drawMissedNotes(missedNotes, currentTime) {
+    const maxVisibleTime = 1500; // Keep missed notes visible for 1.5 seconds
+
+    missedNotes.forEach(note => {
+      const noteInfo = MIDI_NOTE_MAP[note.midiNote];
+      if (!noteInfo) return;
+
+      const timeSinceMiss = currentTime - note.time;
+
+      // Only show notes that haven't faded out yet
+      if (timeSinceMiss > maxVisibleTime) return;
+
+      // Calculate X position at actual note time
+      const xPosition = this.calculateXPosition(note.time, currentTime);
+
+      // Don't draw if way off screen to the left
+      if (xPosition < -100) return;
+
+      // Calculate Y position based on lane
+      const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
+
+      // Fade out gradually
+      const fadeProgress = Math.min(timeSinceMiss / maxVisibleTime, 1);
+      const alpha = 0.6 - (fadeProgress * 0.5); // Start at 60%, fade to 10%
+
+      // Draw note with red color for miss
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = '#FF4444';
+      this.ctx.shadowBlur = 5;
+      this.ctx.shadowColor = '#FF4444';
+
+      const padding = 4;
+      this.ctx.fillRect(
+        xPosition,
+        yPosition + padding,
+        this.config.NOTE_WIDTH,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+
+      // Draw X mark for missed note
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      this.ctx.lineWidth = 2;
+      const centerX = xPosition + this.config.NOTE_WIDTH / 2;
+      const centerY = yPosition + this.config.LANE_HEIGHT / 2;
+      const markSize = 8;
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(centerX - markSize, centerY - markSize);
+      this.ctx.lineTo(centerX + markSize, centerY + markSize);
+      this.ctx.moveTo(centerX + markSize, centerY - markSize);
+      this.ctx.lineTo(centerX - markSize, centerY + markSize);
+      this.ctx.stroke();
+
+      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = 1.0;
+    });
   }
 
   /**
@@ -317,8 +484,11 @@ export class NoteRenderer {
       // Get accuracy-based color
       const color = this.getAccuracyColor(note.accuracy);
 
-      // Calculate note width (scale it too, but ensure minimum visibility)
-      const noteWidth = Math.max(6, this.config.NOTE_WIDTH * timeScale * 5);
+      // Calculate note width to match playback proportions
+      // During playback: NOTE_WIDTH pixels spans (NOTE_WIDTH / SCROLL_SPEED) ms
+      // In completion view: use same time duration scaled by timeScale
+      const playbackNoteTimeSpan = this.config.NOTE_WIDTH / this.config.SCROLL_SPEED;
+      const noteWidth = Math.max(4, playbackNoteTimeSpan * timeScale);
 
       // Draw note rectangle with glow
       this.ctx.fillStyle = color;
