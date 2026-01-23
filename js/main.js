@@ -15,6 +15,87 @@ import { StatsManager } from './statsManager.js';
 import { StatsGraph } from './statsGraph.js';
 import { authManager } from './authManager.js';
 
+// Theme management
+const ThemeManager = {
+  storageKey: 'groovelab_theme',
+
+  init() {
+    // Check localStorage first, then system preference
+    const savedTheme = localStorage.getItem(this.storageKey);
+    if (savedTheme) {
+      this.setTheme(savedTheme);
+    } else {
+      // Use system preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      this.setTheme(prefersDark ? 'dark' : 'light');
+    }
+
+    // Listen for system preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem(this.storageKey)) {
+        this.setTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+
+    // Set up toggle button
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => this.toggle());
+    }
+  },
+
+  setTheme(theme) {
+    if (theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    this.updateToggleIcon(theme);
+    this.updateCanvasColors(theme);
+  },
+
+  toggle() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    this.setTheme(newTheme);
+    localStorage.setItem(this.storageKey, newTheme);
+  },
+
+  updateToggleIcon(theme) {
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+      toggleBtn.textContent = theme === 'light' ? '☀️' : '🌙';
+    }
+  },
+
+  updateCanvasColors(theme) {
+    // Update NoteRenderer colors and re-render if available
+    if (window.drumGame && window.drumGame.noteRenderer) {
+      window.drumGame.noteRenderer.updateTheme(theme);
+      // Re-render the game canvas with new colors
+      if (window.drumGame.gameState) {
+        window.drumGame.noteRenderer.render(window.drumGame.gameState);
+      }
+    }
+    // Update StatsGraph colors and trigger re-render if available
+    if (window.drumGame && window.drumGame.statsGraph) {
+      window.drumGame.statsGraph.updateTheme(theme);
+      // Re-render the stats graph with new colors
+      if (window.drumGame.statsManager) {
+        const graphData = window.drumGame.statsManager.getGraphData(
+          window.drumGame.currentPatternType,
+          window.drumGame.currentBPM
+        );
+        window.drumGame.statsGraph.render(graphData, { showHistorical: true });
+      }
+    }
+  },
+
+  getTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  }
+};
+
 class DrumGame {
   constructor() {
     this.midiHandler = null;
@@ -92,6 +173,13 @@ class DrumGame {
       this.statsManager.onStatsUpdate = (stats) => {
         this.updateStatsGraph();
       };
+    }
+
+    // Initialize canvases with current theme
+    const currentTheme = ThemeManager.getTheme();
+    this.noteRenderer.updateTheme(currentTheme);
+    if (this.statsGraph) {
+      this.statsGraph.updateTheme(currentTheme);
     }
 
     // Set up mute callback on note renderer
@@ -1316,6 +1404,9 @@ class DrumGame {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
+  // Initialize theme before loading game
+  ThemeManager.init();
+
   const game = new DrumGame();
   await game.init();
 

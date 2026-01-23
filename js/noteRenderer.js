@@ -29,8 +29,47 @@ export class NoteRenderer {
     // Callback for mute toggle
     this.onMuteToggle = null;
 
+    // Theme colors
+    this.theme = 'dark';
+    this.themeColors = this.getThemeColors('dark');
+
     this.setupCanvas();
     this.setupMouseEvents();
+  }
+
+  /**
+   * Get colors for a specific theme
+   * @param {string} theme - 'light' or 'dark'
+   * @returns {Object} Theme colors
+   */
+  getThemeColors(theme) {
+    if (theme === 'light') {
+      return {
+        background1: '#e8e8e8',
+        background2: '#d8d8d8',
+        laneStroke: '#cccccc',
+        textPrimary: '#1a1a1a',
+        textSecondary: '#555555',
+        textMuted: '#888888'
+      };
+    }
+    return {
+      background1: '#1a1a1a',
+      background2: '#0a0a0a',
+      laneStroke: '#333333',
+      textPrimary: '#ffffff',
+      textSecondary: '#888888',
+      textMuted: '#666666'
+    };
+  }
+
+  /**
+   * Update theme colors
+   * @param {string} theme - 'light' or 'dark'
+   */
+  updateTheme(theme) {
+    this.theme = theme;
+    this.themeColors = this.getThemeColors(theme);
   }
 
   /**
@@ -404,8 +443,8 @@ export class NoteRenderer {
    */
   drawBackground() {
     const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
-    gradient.addColorStop(0, '#1a1a1a');
-    gradient.addColorStop(1, '#0a0a0a');
+    gradient.addColorStop(0, this.themeColors.background1);
+    gradient.addColorStop(1, this.themeColors.background2);
 
     this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -419,7 +458,7 @@ export class NoteRenderer {
   drawLanes() {
     const laneCount = Object.keys(MIDI_NOTE_MAP).length;
 
-    this.ctx.strokeStyle = '#333';
+    this.ctx.strokeStyle = this.themeColors.laneStroke;
     this.ctx.lineWidth = 1;
 
     // Draw horizontal dividers
@@ -443,7 +482,7 @@ export class NoteRenderer {
 
       // Draw muted lane background overlay
       if (isMuted) {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        this.ctx.fillStyle = this.theme === 'light' ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.4)';
         this.ctx.fillRect(0, info.lane * this.config.LANE_HEIGHT, this.canvas.width, this.config.LANE_HEIGHT);
       }
 
@@ -452,7 +491,7 @@ export class NoteRenderer {
 
       // Draw drum name (offset for mute icon)
       const labelX = x + 15;
-      this.ctx.fillStyle = isMuted ? '#555' : (isHovered ? '#FFF' : '#888');
+      this.ctx.fillStyle = isMuted ? this.themeColors.textMuted : (isHovered ? this.themeColors.textPrimary : this.themeColors.textSecondary);
       this.ctx.font = isHovered ? 'bold 11px Arial' : '11px Arial';
       this.ctx.fillText(info.name, labelX, y - (this.isKeyboardMode ? 8 : 0));
 
@@ -461,7 +500,7 @@ export class NoteRenderer {
         const keyName = MIDI_TO_KEY[midiNote];
         if (keyName) {
           // Draw key in a small box
-          this.ctx.fillStyle = isMuted ? '#444' : info.color;
+          this.ctx.fillStyle = isMuted ? this.themeColors.textMuted : info.color;
           this.ctx.font = 'bold 12px Arial';
           this.ctx.fillText(keyName, labelX, y + 10);
         }
