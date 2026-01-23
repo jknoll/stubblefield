@@ -60,3 +60,17 @@
 - [x] Fix practice track volume slider (was bypassing gain node)
 - [x] Fix countdown overlay persisting after pattern completion
 - [x] Fix infinite loop stopping after one iteration
+
+## UI/UX Improvements (feature/todo-improvements branch)
+- [x] Remove visual metronome beat indicator ("1 2 3 4"), keep enhanced audio accent
+- [x] Add end-of-pattern boundary lines to piano roll
+- [x] Move keyboard instructions to piano roll lanes (visible when keyboard input active)
+- [x] Reorganize UI layout - merge score/progress rows, compact header, group audio controls
+- [x] Enhance progress tracking with per-BPM stats and larger last data point
+- [x] Add instrument mute controls per lane
+- [x] Add wrong note red dot indicator
+- [x] Add mistake animation moving notes from correct to actual hit position
+- [x] Add light/dark mode toggle with system preference detection
+- [x] Add quantize control to snap pattern notes to grid
+- [x] Add in-browser functional test suite (30 tests)
+- [x] Apply visual refresh with design system colors (teal/magenta palette)
