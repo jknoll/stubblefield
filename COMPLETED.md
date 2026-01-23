@@ -26,6 +26,37 @@
 - [x] Color-code notes based on accuracy (rushing/dragging)
 - [x] Draw missed notes with red color and X marks that fade out
 
+## GrooveLab Rebranding & Features
+- [x] Rename and retitle the page to "GrooveLab"
+- [x] Make the count-in a 4-count
+- [x] Fix tempo change overriding loop setting
+
+## Infinite Loop Mode
+- [x] Add infinite loop option (∞) that continues until user clicks Stop
+- [x] Display accuracy visualization when stopped
+- [x] Track statistics per loop iteration
+
+## Progress Tracking
+- [x] Save accuracy and score over time per pattern
+- [x] Add line graph showing improvement over sessions
+- [x] Update graph in realtime as user plays
+- [x] Add Clear History button to reset all stats
+- [x] Display pattern name in progress tracking section
+
+## MIDI Pad Lights
+- [x] Trigger pad lights for MPD-218 and similar controllers
+- [x] Light correct pad at time user should hit it
+
+## Deployment & Auth
+- [x] Add Vercel deployment configuration
+- [x] Deploy to groovelab.vercel.app
+- [x] Add OAuth login with Google (Firebase Auth) - requires configuration
+
+## Documentation
+- [x] Create README.md with project overview
+- [x] Create FIREBASE.md with Firebase Auth setup instructions
+
 ## Bug Fixes
 - [x] Fix practice track volume slider (was bypassing gain node)
 - [x] Fix countdown overlay persisting after pattern completion
+- [x] Fix infinite loop stopping after one iteration
