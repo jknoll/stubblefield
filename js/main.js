@@ -488,6 +488,10 @@ class DrumGame {
     // Hide completion panel
     this.hideCompletionPanel();
 
+    // Hide countdown overlay
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    if (countdownOverlay) countdownOverlay.classList.remove('show');
+
     // Clear completion view to allow normal rendering
     this.noteRenderer.clearCompletionView();
     this.showingCompletionView = false;
@@ -507,6 +511,10 @@ class DrumGame {
    * Handle pattern completion
    */
   handlePatternComplete() {
+    // Hide countdown overlay if still visible
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    if (countdownOverlay) countdownOverlay.classList.remove('show');
+
     const summary = this.scoreManager.getSummary();
 
     console.log('Pattern Complete!');
