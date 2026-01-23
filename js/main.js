@@ -11,6 +11,8 @@ import { Metronome } from './metronome.js';
 import { AudioManager } from './audioManager.js';
 import { createPattern, PATTERNS, initializeMidiLibrary, getAvailablePatterns, getPatternCategories } from './patterns.js';
 import { MIDI_NOTE_MAP } from './constants.js';
+import { StatsManager } from './statsManager.js';
+import { StatsGraph } from './statsGraph.js';
 
 class DrumGame {
   constructor() {
@@ -23,6 +25,8 @@ class DrumGame {
     this.scoreManager = null;
     this.metronome = null;
     this.audioManager = null;
+    this.statsManager = null;
+    this.statsGraph = null;
 
     this.currentBPM = 101;
     this.currentPattern = null;
@@ -78,6 +82,17 @@ class DrumGame {
     this.noteRenderer = new NoteRenderer(gameCanvas);
     this.audioManager = new AudioManager();
 
+    // Initialize stats tracking
+    this.statsManager = new StatsManager();
+    const statsCanvas = document.getElementById('stats-canvas');
+    if (statsCanvas) {
+      this.statsGraph = new StatsGraph(statsCanvas);
+      // Set up stats update callback
+      this.statsManager.onStatsUpdate = (stats) => {
+        this.updateStatsGraph();
+      };
+    }
+
     // Populate pattern dropdown with loaded patterns
     this.populatePatternDropdown();
 
@@ -111,6 +126,9 @@ class DrumGame {
     // Render initial state
     this.noteRenderer.render(this.gameState);
     this.metronome.render({ beatNumber: 1, phase: 0 });
+
+    // Render initial stats graph
+    this.updateStatsGraph();
 
     this.initialized = true;
     console.log('Game initialized successfully');
@@ -435,6 +453,11 @@ class DrumGame {
     this.isInfiniteLoop = this.isInfiniteLoopMode();
     this.infiniteLoopIteration = 0;
 
+    // Start stats session
+    if (this.statsManager) {
+      this.statsManager.startSession(this.currentPatternType, this.currentBPM);
+    }
+
     // Hide completion panel if visible
     this.hideCompletionPanel();
 
@@ -491,6 +514,12 @@ class DrumGame {
     if (countdownOverlay) countdownOverlay.classList.remove('show');
 
     const summary = this.scoreManager.getSummary();
+
+    // End stats session
+    if (this.statsManager) {
+      this.statsManager.endSession();
+      this.updateStatsGraph();
+    }
 
     console.log('Infinite Loop Complete!');
     console.log(`Total Iterations: ${this.infiniteLoopIteration + 1}`);
@@ -592,9 +621,24 @@ class DrumGame {
     const countdownOverlay = document.getElementById('countdown-overlay');
     if (countdownOverlay) countdownOverlay.classList.remove('show');
 
-    // In infinite loop mode, add more notes and continue playing
+    // In infinite loop mode, record loop iteration stats and add more notes
     if (this.isInfiniteLoop) {
       this.infiniteLoopIteration++;
+
+      // Record stats for this iteration
+      const summary = this.scoreManager.getSummary();
+      if (this.statsManager) {
+        this.statsManager.recordLoopIteration({
+          accuracy: parseFloat(summary.accuracy),
+          score: summary.totalScore,
+          perfect: summary.judgments.PERFECT,
+          good: summary.judgments.GOOD,
+          ok: summary.judgments.OK,
+          miss: summary.judgments.MISS,
+          maxCombo: summary.maxCombo
+        });
+      }
+
       console.log(`Infinite loop: completed iteration ${this.infiniteLoopIteration}, adding more notes...`);
 
       // Add more notes for the next set of loops
@@ -603,6 +647,21 @@ class DrumGame {
     }
 
     const summary = this.scoreManager.getSummary();
+
+    // Record final stats
+    if (this.statsManager) {
+      this.statsManager.recordLoopIteration({
+        accuracy: parseFloat(summary.accuracy),
+        score: summary.totalScore,
+        perfect: summary.judgments.PERFECT,
+        good: summary.judgments.GOOD,
+        ok: summary.judgments.OK,
+        miss: summary.judgments.MISS,
+        maxCombo: summary.maxCombo
+      });
+      this.statsManager.endSession();
+      this.updateStatsGraph();
+    }
 
     console.log('Pattern Complete!');
     console.log(`Final Score: ${summary.totalScore}`);
@@ -711,6 +770,35 @@ class DrumGame {
     document.getElementById('good-count').textContent = scoreData.judgments.GOOD;
     document.getElementById('ok-count').textContent = scoreData.judgments.OK;
     document.getElementById('miss-count').textContent = scoreData.judgments.MISS;
+  }
+
+  /**
+   * Update the stats graph with current data
+   */
+  updateStatsGraph() {
+    if (!this.statsGraph || !this.statsManager) return;
+
+    const graphData = this.statsManager.getGraphData(this.currentPatternType);
+    this.statsGraph.render(graphData, { showHistorical: true });
+
+    // Update info text
+    const infoEl = document.getElementById('stats-session-info');
+    if (infoEl) {
+      const currentStats = this.statsManager.getCurrentSessionStats();
+      const patternStats = this.statsManager.getPatternStats(this.currentPatternType);
+
+      if (currentStats && currentStats.loopResults.length > 0) {
+        const lastLoop = currentStats.loopResults[currentStats.loopResults.length - 1];
+        infoEl.innerHTML = `Loop ${lastLoop.loopNumber}: <span class="trend-up">${lastLoop.accuracy.toFixed(1)}%</span> accuracy`;
+      } else if (patternStats && patternStats.sessions.length > 0) {
+        const trend = patternStats.recentTrend;
+        const trendClass = trend >= 0 ? 'trend-up' : 'trend-down';
+        const trendSymbol = trend >= 0 ? '+' : '';
+        infoEl.innerHTML = `${patternStats.sessions.length} sessions | Trend: <span class="${trendClass}">${trendSymbol}${trend}%</span>`;
+      } else {
+        infoEl.textContent = 'Practice to see your progress';
+      }
+    }
   }
 
   /**
@@ -906,6 +994,10 @@ class DrumGame {
     this.currentPattern = createPattern(patternType, this.currentBPM, loopsOrBars);
 
     this.regenerateGameState();
+
+    // Update stats graph for new pattern
+    this.updateStatsGraph();
+
     console.log(`Pattern changed to ${patternInfo.name} at ${this.currentBPM} BPM`);
   }
 

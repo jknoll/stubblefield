@@ -414,6 +414,45 @@ header h1 {
   font-size: 48px;
 }
 
+/* Progress Tracking / Stats Graph */
+.stats-container {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.stats-container h3 {
+  margin-bottom: 15px;
+  color: #4CAF50;
+  text-align: center;
+}
+
+#stats-canvas {
+  width: 100%;
+  max-width: 600px;
+  height: 200px;
+  display: block;
+  margin: 0 auto;
+  border-radius: 6px;
+  background: #1a1a2e;
+}
+
+.stats-info {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #888;
+}
+
+.stats-info .trend-up {
+  color: #4CAF50;
+}
+
+.stats-info .trend-down {
+  color: #F44336;
+}
+
 /* Audio Mixer */
 .mixer-container {
   background: #1a1a1a;

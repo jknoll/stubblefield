@@ -1,0 +1,274 @@
+// Statistics Graph Renderer - draws accuracy line graphs on canvas
+
+export class StatsGraph {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+
+    // Graph styling
+    this.colors = {
+      background: '#1a1a2e',
+      grid: '#333355',
+      currentLine: '#44FF44',
+      currentFill: 'rgba(68, 255, 68, 0.2)',
+      historicalLine: '#4488FF',
+      historicalFill: 'rgba(68, 136, 255, 0.15)',
+      axis: '#666688',
+      text: '#aaaacc',
+      highlight: '#FFFF44'
+    };
+
+    // Padding
+    this.padding = {
+      left: 50,
+      right: 20,
+      top: 20,
+      bottom: 30
+    };
+  }
+
+  /**
+   * Render the statistics graph
+   * @param {Object} graphData - Data from StatsManager.getGraphData()
+   * @param {Object} options - Rendering options
+   */
+  render(graphData, options = {}) {
+    const { width, height } = this.canvas;
+    const ctx = this.ctx;
+
+    // Clear canvas
+    ctx.fillStyle = this.colors.background;
+    ctx.fillRect(0, 0, width, height);
+
+    const graphWidth = width - this.padding.left - this.padding.right;
+    const graphHeight = height - this.padding.top - this.padding.bottom;
+
+    // Draw grid
+    this.drawGrid(graphWidth, graphHeight);
+
+    // Draw Y axis (0-100%)
+    this.drawYAxis(graphHeight);
+
+    // Determine what to show
+    const hasCurrentSession = graphData.currentSession && graphData.currentSession.length > 0;
+    const hasHistorical = graphData.historicalSessions && graphData.historicalSessions.length > 0;
+
+    if (!hasCurrentSession && !hasHistorical) {
+      // No data - show placeholder
+      this.drawNoDataMessage();
+      return;
+    }
+
+    // Draw historical sessions first (behind current)
+    if (hasHistorical && options.showHistorical !== false) {
+      this.drawHistoricalLine(graphData.historicalSessions, graphWidth, graphHeight);
+    }
+
+    // Draw current session line (on top)
+    if (hasCurrentSession) {
+      this.drawCurrentSessionLine(graphData.currentSession, graphWidth, graphHeight);
+    }
+
+    // Draw legend
+    this.drawLegend(hasCurrentSession, hasHistorical);
+  }
+
+  /**
+   * Draw grid lines
+   */
+  drawGrid(graphWidth, graphHeight) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = this.colors.grid;
+    ctx.lineWidth = 1;
+
+    // Horizontal grid lines (every 20%)
+    for (let i = 0; i <= 5; i++) {
+      const y = this.padding.top + (graphHeight * (5 - i) / 5);
+      ctx.beginPath();
+      ctx.moveTo(this.padding.left, y);
+      ctx.lineTo(this.padding.left + graphWidth, y);
+      ctx.stroke();
+    }
+  }
+
+  /**
+   * Draw Y axis labels
+   */
+  drawYAxis(graphHeight) {
+    const ctx = this.ctx;
+    ctx.fillStyle = this.colors.text;
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    // Y axis labels (0%, 20%, 40%, 60%, 80%, 100%)
+    for (let i = 0; i <= 5; i++) {
+      const y = this.padding.top + (graphHeight * (5 - i) / 5);
+      const label = `${i * 20}%`;
+      ctx.fillText(label, this.padding.left - 8, y);
+    }
+  }
+
+  /**
+   * Draw line for current session (real-time)
+   */
+  drawCurrentSessionLine(data, graphWidth, graphHeight) {
+    if (data.length === 0) return;
+
+    const ctx = this.ctx;
+    const maxX = Math.max(data.length, 4); // Minimum 4 points on x-axis
+
+    // Calculate points
+    const points = data.map((d, i) => ({
+      x: this.padding.left + (d.x / maxX) * graphWidth,
+      y: this.padding.top + graphHeight - (d.y / 100) * graphHeight,
+      accuracy: d.y
+    }));
+
+    // Draw filled area
+    ctx.fillStyle = this.colors.currentFill;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, this.padding.top + graphHeight);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, this.padding.top + graphHeight);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw line
+    ctx.strokeStyle = this.colors.currentLine;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+
+    // Draw points
+    points.forEach((p, i) => {
+      ctx.fillStyle = this.colors.currentLine;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw accuracy label on last point
+      if (i === points.length - 1) {
+        ctx.fillStyle = this.colors.highlight;
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${p.accuracy.toFixed(1)}%`, p.x + 8, p.y - 4);
+      }
+    });
+
+    // Draw X axis labels (loop numbers)
+    ctx.fillStyle = this.colors.text;
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    const labelInterval = Math.max(1, Math.floor(data.length / 8));
+    data.forEach((d, i) => {
+      if (i % labelInterval === 0 || i === data.length - 1) {
+        const x = this.padding.left + (d.x / maxX) * graphWidth;
+        ctx.fillText(d.x.toString(), x, this.canvas.height - 8);
+      }
+    });
+  }
+
+  /**
+   * Draw historical sessions line
+   */
+  drawHistoricalLine(data, graphWidth, graphHeight) {
+    if (data.length === 0) return;
+
+    const ctx = this.ctx;
+    const maxX = data.length;
+
+    // Calculate points
+    const points = data.map((d, i) => ({
+      x: this.padding.left + ((i + 0.5) / maxX) * graphWidth,
+      y: this.padding.top + graphHeight - (d.y / 100) * graphHeight,
+      accuracy: d.y,
+      date: d.date
+    }));
+
+    // Draw filled area
+    ctx.fillStyle = this.colors.historicalFill;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, this.padding.top + graphHeight);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, this.padding.top + graphHeight);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw line
+    ctx.strokeStyle = this.colors.historicalLine;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw points
+    points.forEach(p => {
+      ctx.fillStyle = this.colors.historicalLine;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  /**
+   * Draw legend
+   */
+  drawLegend(hasCurrentSession, hasHistorical) {
+    const ctx = this.ctx;
+    let x = this.canvas.width - this.padding.right - 10;
+    const y = this.padding.top + 10;
+
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+
+    if (hasCurrentSession) {
+      // Current session indicator
+      ctx.fillStyle = this.colors.currentLine;
+      ctx.fillRect(x - 30, y - 5, 20, 3);
+      ctx.fillStyle = this.colors.text;
+      ctx.fillText('Current', x - 35, y);
+    }
+
+    if (hasHistorical) {
+      // Historical indicator
+      const yOffset = hasCurrentSession ? 18 : 0;
+      ctx.strokeStyle = this.colors.historicalLine;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(x - 30, y + yOffset - 2);
+      ctx.lineTo(x - 10, y + yOffset - 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = this.colors.text;
+      ctx.fillText('History', x - 35, y + yOffset);
+    }
+  }
+
+  /**
+   * Draw message when no data available
+   */
+  drawNoDataMessage() {
+    const ctx = this.ctx;
+    ctx.fillStyle = this.colors.text;
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('No practice data yet', this.canvas.width / 2, this.canvas.height / 2);
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Complete a session to see your progress', this.canvas.width / 2, this.canvas.height / 2 + 20);
+  }
+
+  /**
+   * Clear the graph
+   */
+  clear() {
+    this.ctx.fillStyle = this.colors.background;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+}
