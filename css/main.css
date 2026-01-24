@@ -427,7 +427,7 @@ header h1 {
 
 .stats-panel #stats-canvas {
   width: 100%;
-  height: 120px;
+  height: 180px;
   display: block;
   border-radius: 4px;
   background: var(--bg-panel);
@@ -810,6 +810,7 @@ header h1 {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 16px;
 }
 
 .dial-container .dial {

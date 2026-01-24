@@ -1,3 +1,3 @@
 # TODO
 
-No pending tasks - all features implemented.
+No pending tasks - all UI fixes implemented.

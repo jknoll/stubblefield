@@ -95,6 +95,9 @@ export class MidiHandler {
     if (this.selectedDeviceId === null) {
       // All devices active
       this.activeInputs = [...this.allInputs];
+    } else if (this.selectedDeviceId === 'none') {
+      // No MIDI devices - keyboard only mode
+      this.activeInputs = [];
     } else {
       // Only selected device active
       this.activeInputs = this.allInputs.filter(input => input.id === this.selectedDeviceId);

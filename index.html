@@ -48,7 +48,7 @@
         <span class="tempo-display"><span id="bpm-display">120</span> BPM</span>
         <button id="bpm-up" class="bpm-btn">+</button>
       </div>
-      <input type="range" id="bpm-slider" min="30" max="200" value="120" step="5">
+      <input type="range" id="bpm-slider" min="30" max="200" value="120" step="1">
       <select id="pattern-select">
         <option value="funkydrummer" selected>Funky Drummer (Intro Break)</option>
         <option value="rock">Rock Beat</option>
@@ -192,7 +192,7 @@
         <span id="drums-volume-display">70%</span>
       </div>
       <div class="setting-group debounce-group">
-        <label for="debounce-slider">Filter</label>
+        <label for="debounce-slider" title="Filters rapid double-triggers from drum pads. Increase if you hear ghost notes.">Debounce</label>
         <input type="range" id="debounce-slider" min="0" max="100" value="30" step="5">
         <span id="debounce-display">30ms</span>
         <span id="debounce-stats" class="debounce-stats"></span>

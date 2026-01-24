@@ -385,11 +385,11 @@ class DrumGame {
     });
 
     document.getElementById('bpm-up').addEventListener('click', () => {
-      this.changeBPM(Math.min(200, this.currentBPM + 5));
+      this.changeBPM(Math.min(200, this.currentBPM + 1));
     });
 
     document.getElementById('bpm-down').addEventListener('click', () => {
-      this.changeBPM(Math.max(30, this.currentBPM - 5));
+      this.changeBPM(Math.max(30, this.currentBPM - 1));
     });
 
     // Mixer control handlers
@@ -1176,6 +1176,12 @@ class DrumGame {
         deviceSelect.insertBefore(allOption, deviceSelect.firstChild);
       }
 
+      // Add "None (Keyboard Only)" option at the top
+      const noneOption = document.createElement('option');
+      noneOption.value = 'none';
+      noneOption.textContent = 'None (Keyboard Only)';
+      deviceSelect.insertBefore(noneOption, deviceSelect.firstChild);
+
       // Set selection to current selected device
       const selectedId = this.midiHandler.getSelectedDeviceId();
       if (selectedId === null && devices.length > 1) {
@@ -1195,7 +1201,7 @@ class DrumGame {
     }
 
     // Update note renderer input mode based on current selection
-    const isKeyboardMode = deviceSelect.value === 'keyboard';
+    const isKeyboardMode = deviceSelect.value === 'keyboard' || deviceSelect.value === 'none';
     if (this.noteRenderer) {
       this.noteRenderer.setInputMode(isKeyboardMode);
     }
@@ -1207,6 +1213,8 @@ class DrumGame {
   handleDeviceSelection(deviceId) {
     if (deviceId === 'all') {
       this.midiHandler.selectDevice(null); // null = all devices
+    } else if (deviceId === 'none') {
+      this.midiHandler.selectDevice('none'); // 'none' = keyboard only, no MIDI
     } else if (deviceId !== 'keyboard') {
       this.midiHandler.selectDevice(deviceId);
     }
