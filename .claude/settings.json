@@ -1,4 +1,21 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(git:*)",
+      "Bash(ls:*)",
+      "Bash(pgrep:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(xxd:*)",
+      "Bash(xargs kill:*)",
+      "Bash(vercel:*)",
+      "Skill(vercel:deploy)",
+      "WebFetch(domain:groovemonkee.com)",
+      "WebFetch(domain:groovelab.vercel.app)"
+    ]
+  },
   "enabledPlugins": {
     "vercel@claude-plugins-official": true
   }
