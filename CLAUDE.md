@@ -10,15 +10,20 @@ Named after Clyde Stubblefield, the legendary drummer known for pioneering funk 
 
 ## Running the Application
 
-This is a vanilla JavaScript application with no build step. To run:
+### Development Mode (Recommended)
 ```bash
-node serve.js
+npm install
+npm run dev
 ```
 Then open `http://localhost:8080` in Chrome or Edge.
 
-**Note for Claude Code:** Use `run_in_background: true` parameter instead of appending `&` to run the server in background. This ensures proper permission handling.
+### Production Build
+```bash
+npm run build
+npm run preview
+```
 
-Alternatively, serve the project root with any static file server.
+**Note for Claude Code:** Use `run_in_background: true` parameter instead of appending `&` to run the server in background. This ensures proper permission handling.
 
 ### Input Methods
 - **Keyboard**: A=Kick, S=Snare, D=Tom1, J=Tom2, K=HH-Closed, L=HH-Open
@@ -26,11 +31,55 @@ Alternatively, serve the project root with any static file server.
 
 ## Architecture
 
+### UI Layer (Svelte)
+
+The application uses Svelte for the control panel UI. See `docs/state-management.md` for detailed architecture decisions.
+
+```
+src/
+├── main.js           # Svelte entry point
+├── App.svelte        # Main application component
+├── stores/
+│   └── uiStore.js    # Centralized UI state management
+└── components/
+    ├── Header.svelte
+    ├── ControlsRow.svelte
+    ├── GameCanvas.svelte
+    ├── GameButton.svelte
+    ├── StatsScoreRow.svelte
+    ├── CompletionPanel.svelte
+    ├── SettingsRow.svelte
+    └── LoadingOverlay.svelte
+```
+
+### Game Engine Layer (Vanilla JS)
+
+The real-time game engine remains in vanilla JavaScript for performance. The game loop and audio scheduling are NOT managed by Svelte to maintain low latency.
+
+```
+js/
+├── gameState.js      # Game time, note lifecycle, animation loop
+├── noteRenderer.js   # Canvas-based renderer (60fps)
+├── audioManager.js   # Web Audio API synthesis
+├── timingJudge.js    # Hit detection and scoring
+├── scoreManager.js   # Score tracking with combos
+├── midiHandler.js    # Web MIDI API wrapper
+├── keyboardHandler.js # Keyboard input
+├── inputDebouncer.js # Double-trigger filtering
+├── metronome.js      # Visual beat indicator
+├── midiParser.js     # MIDI file parsing
+├── patterns.js       # Pattern loading from MIDI library
+├── statsManager.js   # Practice statistics
+├── statsGraph.js     # Progress visualization
+├── quantizer.js      # Note quantization
+└── constants.js      # Configuration
+```
+
 ### Core Game Loop
 
 The game uses `requestAnimationFrame` for the main loop, coordinated through:
 
-1. **DrumGame** (`js/main.js`) - Main orchestrator that wires all modules together
+1. **DrumGameEngine** (`src/App.svelte`) - Main orchestrator that wires all modules together
 2. **GameState** (`js/gameState.js`) - Manages game time, note lifecycle (upcoming → active → hit/missed), and the animation loop
 3. **NoteRenderer** (`js/noteRenderer.js`) - Canvas-based renderer drawing scrolling notes and hit effects
 
@@ -38,10 +87,26 @@ The game uses `requestAnimationFrame` for the main loop, coordinated through:
 
 ```
 MidiHandler ──┐
-              ├──→ InputDebouncer → DrumGame.handleMidiInput() → TimingJudge.findMatchingNote()
+              ├──→ InputDebouncer → GameEngine.handleMidiInput() → TimingJudge.findMatchingNote()
 KeyboardHandler┘                    → TimingJudge.judgeHit() → ScoreManager.recordJudgment()
                                     → GameState.recordHit() → NoteRenderer (visual feedback)
 ```
+
+### State Management
+
+**UI State** (Svelte stores in `src/stores/uiStore.js`):
+- BPM, pattern, loop count, game phase
+- Volume settings, kit selection
+- Score display (updated periodically, not per-frame)
+- MIDI device selection
+
+**Game State** (Vanilla JS, NOT in Svelte):
+- `currentTime` - changes every frame
+- `activeNotes`, `upcomingNotes` - updated 60 times per second
+- Audio scheduling and playback
+- Canvas rendering
+
+This separation prevents Svelte's reactivity from interfering with the 60fps game loop.
 
 ### Module Responsibilities
 
@@ -92,4 +157,7 @@ On pattern completion, the game canvas displays a piano roll view showing all no
 - User interaction required before audio plays (Web Audio API autoplay policy)
 
 ## Testing changes
+
 Test using Claude for Chrome. Verify edits and modifications.
+
+The dev server (`npm run dev`) supports hot module replacement for quick iteration on UI changes.

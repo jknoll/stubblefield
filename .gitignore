@@ -9,8 +9,11 @@
 *.swp
 *.swo
 
-# Node modules (if any future dependencies)
+# Node modules
 node_modules/
+
+# Build output
+dist/
 
 # Vercel
 .vercel/
