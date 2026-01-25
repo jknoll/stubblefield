@@ -478,6 +478,11 @@ class DrumGame {
       this.clearAllStatsHistory();
     });
 
+    // Reset button handler
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      this.resetAttempt();
+    });
+
     // Window resize handler for responsive canvas
     window.addEventListener('resize', () => {
       this.handleResize();
@@ -883,6 +888,62 @@ class DrumGame {
     this.metronome.render({ beatNumber: 1, phase: 0 });
 
     console.log('Game reset');
+  }
+
+  /**
+   * Reset for another attempt (keeps pattern, BPM, loops intact)
+   */
+  resetAttempt() {
+    if (!this.initialized) return;
+
+    // Stop if playing
+    if (this.gameState.isPlaying) {
+      this.gameState.stop();
+    }
+
+    // Reset game state (notes, timing)
+    this.gameState.reset();
+
+    // Reset scoring and timing
+    this.scoreManager.reset();
+    this.timingJudge.reset();
+    this.metronome.reset();
+    this.inputDebouncer.reset();
+    this.lastBeat = 0;
+
+    // Clear any active pad lights
+    if (this.midiHandler && this.midiHandler.hasOutputs()) {
+      this.midiHandler.clearAllPadLights();
+    }
+
+    // Reset infinite loop tracking
+    this.isInfiniteLoop = false;
+    this.infiniteLoopIteration = 0;
+
+    // Clear debounce stats display
+    const statsEl = document.getElementById('debounce-stats');
+    if (statsEl) statsEl.textContent = '';
+
+    // Hide completion panel
+    this.hideCompletionPanel();
+
+    // Hide countdown overlay
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    if (countdownOverlay) countdownOverlay.classList.remove('show');
+
+    // Clear completion view to allow normal rendering
+    this.noteRenderer.clearCompletionView();
+    this.showingCompletionView = false;
+
+    // Update game phase
+    this.gamePhase = 'ready';
+    this.updateGameButton();
+
+    // Clear canvas and re-render initial state
+    this.noteRenderer.render(this.gameState);
+    this.metronome.render({ beatNumber: 1, phase: 0 });
+
+    console.log('Attempt reset - ready to try again');
   }
 
   /**

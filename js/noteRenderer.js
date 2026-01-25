@@ -780,7 +780,7 @@ export class NoteRenderer {
 
   /**
    * Render completion view showing all notes with accuracy coloring
-   * Uses same spacing as during playback (SCROLL_SPEED), not scaled to fit
+   * Scales the pattern to fit within the viewport
    * @param {Array} notes - All notes with accuracy data
    * @param {number} patternDuration - Total duration of the pattern
    */
@@ -797,36 +797,33 @@ export class NoteRenderer {
     // Draw lane dividers
     this.drawLanes();
 
-    // Draw hit line (same as during playback)
-    this.drawHitLine();
+    // Calculate scaling to fit pattern in viewport
+    // Leave padding on left for lane labels (80px) and right edge (20px)
+    const leftPadding = 80;
+    const rightPadding = 20;
+    const availableWidth = this.canvas.width - leftPadding - rightPadding;
 
-    // Use same positioning as during playback:
-    // - Hit line is at center (this.config.HIT_LINE_X)
-    // - Notes positioned using SCROLL_SPEED
-    // - Show notes as if viewing from end of pattern (all notes to left of hit line)
-    const hitLineX = this.config.HIT_LINE_X;
-    const scrollSpeed = this.baseConfig.SCROLL_SPEED;
+    // Calculate scroll speed that fits the entire pattern
+    // Pattern goes from time 0 to patternDuration
+    // We want all notes visible, so scale based on pattern duration
+    const scaledScrollSpeed = availableWidth / patternDuration;
 
-    // Draw each note using playback-consistent positioning
+    // Note width should also scale, but with a minimum size for visibility
+    const scaledNoteWidth = Math.max(8, Math.min(this.baseConfig.NOTE_WIDTH, availableWidth / (notes.length || 1) * 0.8));
+
+    // Draw each note with scaled positioning
     notes.forEach(note => {
       const noteInfo = MIDI_NOTE_MAP[note.midiNote];
       if (!noteInfo) return;
 
-      // Calculate X position same as during playback
-      // At end of pattern, timeUntilHit = note.time - patternDuration (negative, so notes are left of hit line)
-      const timeUntilHit = note.time - patternDuration;
-      const xPosition = hitLineX + (timeUntilHit * scrollSpeed);
+      // Calculate X position: note.time maps to position in available width
+      // time 0 -> leftPadding, time patternDuration -> leftPadding + availableWidth
+      let xPosition = leftPadding + (note.time * scaledScrollSpeed);
 
-      // Apply accuracy offset if note was hit (same as real-time feedback)
-      let finalX = xPosition;
+      // Apply accuracy offset if note was hit (scaled proportionally)
       if (note.accuracy && !note.accuracy.missed) {
-        const accuracyOffset = (note.accuracy.timeDiff || 0) * scrollSpeed;
-        finalX = xPosition + accuracyOffset;
-      }
-
-      // Skip notes that are way off screen
-      if (finalX < -this.baseConfig.NOTE_WIDTH || finalX > this.canvas.width + this.baseConfig.NOTE_WIDTH) {
-        return;
+        const accuracyOffset = (note.accuracy.timeDiff || 0) * scaledScrollSpeed;
+        xPosition += accuracyOffset;
       }
 
       // Calculate Y position based on lane
@@ -838,9 +835,6 @@ export class NoteRenderer {
       // Get accuracy-based color (gray if muted)
       const color = isMuted ? '#444' : this.getAccuracyColor(note.accuracy);
 
-      // Use fixed note width matching playback
-      const noteWidth = this.baseConfig.NOTE_WIDTH;
-
       // Draw note rectangle with glow (reduced for muted)
       this.ctx.fillStyle = color;
       this.ctx.shadowBlur = isMuted ? 0 : 8;
@@ -849,9 +843,9 @@ export class NoteRenderer {
 
       const padding = 4;
       this.ctx.fillRect(
-        finalX - noteWidth / 2,
+        xPosition - scaledNoteWidth / 2,
         yPosition + padding,
-        noteWidth,
+        scaledNoteWidth,
         this.config.LANE_HEIGHT - padding * 2
       );
 
@@ -859,9 +853,9 @@ export class NoteRenderer {
       this.ctx.strokeStyle = isMuted ? 'rgba(100, 100, 100, 0.5)' : 'rgba(255, 255, 255, 0.7)';
       this.ctx.lineWidth = 1;
       this.ctx.strokeRect(
-        finalX - noteWidth / 2,
+        xPosition - scaledNoteWidth / 2,
         yPosition + padding,
-        noteWidth,
+        scaledNoteWidth,
         this.config.LANE_HEIGHT - padding * 2
       );
 
