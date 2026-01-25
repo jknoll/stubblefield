@@ -1,11 +1,14 @@
 {
   "name": "groovelab",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A browser-based drum practice game using Web MIDI API",
-  "main": "serve.js",
+  "type": "module",
   "scripts": {
-    "start": "node serve.js",
-    "dev": "node serve.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "node serve.js",
+    "test": "node js/tests/testRunner.js"
   },
   "keywords": [
     "drums",
@@ -13,7 +16,8 @@
     "music",
     "practice",
     "rhythm",
-    "game"
+    "game",
+    "svelte"
   ],
   "author": "",
   "license": "MIT",
@@ -23,5 +27,10 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.1.0",
+    "svelte": "^4.2.12",
+    "vite": "^5.2.0"
   }
 }
