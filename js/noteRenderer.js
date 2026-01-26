@@ -29,6 +29,9 @@ export class NoteRenderer {
     // Callback for mute toggle
     this.onMuteToggle = null;
 
+    // Store last game state for re-render on mute toggle
+    this.lastGameState = null;
+
     // Theme colors
     this.theme = 'dark';
     this.themeColors = this.getThemeColors('dark');
@@ -77,12 +80,29 @@ export class NoteRenderer {
   }
 
   /**
+   * Convert CSS/display coordinates to canvas coordinates
+   * Necessary because canvas may be scaled via CSS (max-width: 100%)
+   * @param {MouseEvent} e - Mouse event
+   * @returns {{x: number, y: number}} Canvas coordinates
+   */
+  getCanvasCoordinates(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    // Calculate scale factors between CSS display size and canvas internal size
+    const scaleX = this.canvas.width / rect.width;
+    const scaleY = this.canvas.height / rect.height;
+    // Convert CSS coordinates to canvas coordinates
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  /**
    * Set up mouse events for lane hover tooltips and mute toggle
    */
   setupMouseEvents() {
     this.canvas.addEventListener('mousemove', (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const y = e.clientY - rect.top;
+      const { y } = this.getCanvasCoordinates(e);
       const lane = Math.floor(y / this.config.LANE_HEIGHT);
 
       if (lane >= 0 && lane < Object.keys(MIDI_NOTE_MAP).length) {
@@ -98,9 +118,7 @@ export class NoteRenderer {
 
     // Handle click on mute icon area
     this.canvas.addEventListener('click', (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = this.getCanvasCoordinates(e);
 
       // Check if click is in the mute icon area (left 70px of canvas)
       if (x < 70) {
@@ -130,6 +148,12 @@ export class NoteRenderer {
     // Notify callback
     if (this.onMuteToggle) {
       this.onMuteToggle(midiNote, this.mutedInstruments.has(midiNote));
+    }
+
+    // Trigger re-render to show muted state immediately
+    // This is needed when game is not playing (no active render loop)
+    if (this.lastGameState) {
+      this.render(this.lastGameState);
     }
   }
 
@@ -202,6 +226,9 @@ export class NoteRenderer {
   render(gameState) {
     // Don't render over completion view
     if (this.showingCompletionView) return;
+
+    // Store for re-render on mute toggle
+    this.lastGameState = gameState;
 
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
