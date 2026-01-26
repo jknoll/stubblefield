@@ -407,8 +407,12 @@ export class AudioManager {
    * @param {string} kitId - Kit identifier (rock, funk, tr808, tr909)
    */
   setKit(kitId) {
+    console.log(`[AudioManager] setKit called with: ${kitId}, exists: ${!!DRUM_KITS[kitId]}`);
     if (DRUM_KITS[kitId]) {
       this.currentKit = kitId;
+      console.log(`[AudioManager] currentKit set to: ${this.currentKit}`);
+    } else {
+      console.warn(`[AudioManager] Unknown kit: ${kitId}`);
     }
   }
 

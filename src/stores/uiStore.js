@@ -16,7 +16,7 @@ import { writable, derived, get } from 'svelte/store';
 const DEFAULTS = {
   bpm: 101,
   pattern: 'funky_drummer_break_intro',
-  loopCount: 4,
+  loopCount: '4',  // String to match HTML option values
   gamePhase: 'ready',
 
   metronomeVolume: 50,
@@ -213,9 +213,17 @@ export function setDrumsVolume(vol) {
 }
 
 export function setKit(kitId) {
+  console.log(`[Store] setKit called with: ${kitId}`);
   kit.set(kitId);
   if (gameEngine && gameEngine.audioManager) {
+    console.log(`[Store] Calling audioManager.setKit(${kitId})`);
     gameEngine.audioManager.setKit(kitId);
+    console.log(`[Store] audioManager.currentKit is now: ${gameEngine.audioManager.currentKit}`);
+  } else {
+    console.warn(`[Store] setKit: gameEngine or audioManager not available`, {
+      gameEngine: !!gameEngine,
+      audioManager: gameEngine ? !!gameEngine.audioManager : false
+    });
   }
 }
 
