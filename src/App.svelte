@@ -150,6 +150,10 @@
       this.isInfiniteLoop = false;
       this.infiniteLoopIteration = 0;
       this.initialized = false;
+
+      // Quantize toggle state
+      this.originalPatternNotes = null;
+      this.isQuantized = false;
     }
 
     async init(gameCanvas, metronomeCanvas, statsCanvas) {
@@ -229,8 +233,8 @@
       // Update MIDI device status
       this.updateDeviceStatus();
 
-      // Render initial state
-      this.noteRenderer.render(this.gameState);
+      // Render initial pattern preview (not full render with hit line)
+      this.showPatternPreview();
       this.metronome.render({ beatNumber: 1, phase: 0 });
       this.updateStatsGraph();
 
@@ -270,6 +274,18 @@
 
       // Window resize
       window.addEventListener('resize', () => this.handleResize());
+
+      // Initialize AudioManager on first user interaction (for pads to work before game starts)
+      const initAudioOnInteraction = async () => {
+        if (this.audioManager && !this.audioManager.initialized) {
+          await this.audioManager.initialize();
+          console.log('AudioManager initialized via user interaction');
+        }
+        document.removeEventListener('click', initAudioOnInteraction);
+        document.removeEventListener('keydown', initAudioOnInteraction);
+      };
+      document.addEventListener('click', initAudioOnInteraction, { once: true });
+      document.addEventListener('keydown', initAudioOnInteraction, { once: true });
     }
 
     attachGameStateCallbacks() {
@@ -509,7 +525,8 @@
       updateGamePhase('ready');
       resetScore();
 
-      this.noteRenderer.render(this.gameState);
+      // Show pattern preview instead of game render when resetting
+      this.showPatternPreview();
       this.metronome.render({ beatNumber: 1, phase: 0 });
     }
 
@@ -658,27 +675,69 @@
       this.updateStatsGraph();
     }
 
-    quantizeCurrentPattern() {
-      if (this.gameState && this.gameState.isPlaying) return;
-      if (!this.currentPattern || !this.currentPattern.notes || this.currentPattern.notes.length === 0) return;
-
-      const analysis = Quantizer.analyzePattern(this.currentPattern.notes, this.currentBPM);
-      const quantizedNotes = Quantizer.quantizeNotes(
-        this.currentPattern.notes,
-        this.currentBPM,
-        analysis.subdivision
-      );
-
-      this.currentPattern.notes = quantizedNotes;
-      this.regenerateGameState();
-
-      // Show feedback
-      const feedback = document.getElementById('hit-feedback');
-      if (feedback) {
-        feedback.textContent = `Quantized to ${analysis.subdivision.name} grid`;
-        feedback.className = 'hit-feedback show';
-        setTimeout(() => feedback.className = 'hit-feedback', 1500);
+    /**
+     * Toggle quantization on/off
+     * @returns {boolean} New quantize state
+     */
+    toggleQuantize() {
+      if (this.gameState && this.gameState.isPlaying) return this.isQuantized;
+      if (!this.currentPattern || !this.currentPattern.notes || this.currentPattern.notes.length === 0) {
+        return this.isQuantized;
       }
+
+      if (!this.isQuantized) {
+        // Turn ON: Store original notes and apply quantization
+        this.originalPatternNotes = this.currentPattern.notes.map(note => ({ ...note }));
+
+        const analysis = Quantizer.analyzePattern(this.currentPattern.notes, this.currentBPM);
+        const quantizedNotes = Quantizer.quantizeNotes(
+          this.currentPattern.notes,
+          this.currentBPM,
+          analysis.subdivision
+        );
+
+        this.currentPattern.notes = quantizedNotes;
+        this.isQuantized = true;
+
+        // Show feedback
+        const feedback = document.getElementById('hit-feedback');
+        if (feedback) {
+          feedback.textContent = `Quantized to ${analysis.subdivision.name} grid`;
+          feedback.className = 'hit-feedback show';
+          setTimeout(() => feedback.className = 'hit-feedback', 1500);
+        }
+      } else {
+        // Turn OFF: Restore original notes
+        if (this.originalPatternNotes) {
+          this.currentPattern.notes = this.originalPatternNotes.map(note => ({ ...note }));
+        }
+        this.originalPatternNotes = null;
+        this.isQuantized = false;
+
+        // Show feedback
+        const feedback = document.getElementById('hit-feedback');
+        if (feedback) {
+          feedback.textContent = 'Quantize off - original timing restored';
+          feedback.className = 'hit-feedback show';
+          setTimeout(() => feedback.className = 'hit-feedback', 1500);
+        }
+      }
+
+      this.regenerateGameState();
+      return this.isQuantized;
+    }
+
+    /**
+     * Reset quantize state (called when pattern changes)
+     */
+    resetQuantize() {
+      this.originalPatternNotes = null;
+      this.isQuantized = false;
+    }
+
+    // Legacy method for backwards compatibility
+    quantizeCurrentPattern() {
+      return this.toggleQuantize();
     }
 
     regenerateGameState() {
@@ -688,8 +747,25 @@
       this.gameState = new GameState(this.currentPattern);
       this.attachGameStateCallbacks();
 
-      this.noteRenderer.render(this.gameState);
+      // Show pattern preview (without hit line) when not playing
+      this.showPatternPreview();
       this.metronome.render({ beatNumber: 1, phase: 0 });
+    }
+
+    showPatternPreview() {
+      if (!this.currentPattern || !this.noteRenderer) return;
+
+      // Get single loop notes for preview (not all repeated loops)
+      const singleLoopDuration = this.currentPattern.singlePatternDuration || this.currentPattern.duration;
+      const singleLoopNotes = this.currentPattern.notes.filter(n => n.time < singleLoopDuration);
+
+      console.log('[Preview] Showing pattern preview:', {
+        singleLoopDuration,
+        totalNotes: this.currentPattern.notes.length,
+        filteredNotes: singleLoopNotes.length
+      });
+
+      this.noteRenderer.renderPreview(singleLoopNotes, singleLoopDuration);
     }
 
     scheduleNoteSounds() {
@@ -736,7 +812,8 @@
       const devices = [];
 
       if (this.midiHandler.hasDevices()) {
-        const midiDevices = this.midiHandler.getAvailableDevices();
+        // Use getAllDevices() to show all devices in dropdown, not just active ones
+        const midiDevices = this.midiHandler.getAllDevices();
         midiDevices.forEach(device => {
           devices.push({ id: device.id, name: device.name });
         });
@@ -747,8 +824,11 @@
 
       updateMidiDevices(devices);
 
+      // Default to keyboard mode unless a specific MIDI device is selected
+      const selectedId = this.midiHandler.getSelectedDeviceId();
       const isKeyboard = !this.midiHandler.hasDevices() ||
-        this.midiHandler.getSelectedDeviceId() === 'none';
+        selectedId === 'none' ||
+        selectedId === null;  // null means no explicit selection, default to keyboard
       isKeyboardMode.set(isKeyboard);
 
       if (this.noteRenderer) {

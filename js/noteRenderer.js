@@ -264,6 +264,85 @@ export class NoteRenderer {
   }
 
   /**
+   * Render pattern preview - shows all notes without hit line
+   * Used to display pattern before user starts playing
+   * @param {Array} notes - Array of note objects from one loop of the pattern
+   * @param {number} patternDuration - Duration of single pattern loop in ms
+   */
+  renderPreview(notes, patternDuration) {
+    // Clear canvas
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Draw background
+    this.drawBackground();
+
+    // Draw lane dividers (without showing hit line)
+    this.drawLanes();
+
+    // Skip hit line and pattern boundaries in preview mode
+
+    if (!notes || notes.length === 0 || patternDuration <= 0) {
+      return;
+    }
+
+    // Calculate scaling to fit pattern in viewport
+    const leftPadding = 80;
+    const rightPadding = 20;
+    const availableWidth = this.canvas.width - leftPadding - rightPadding;
+
+    // Scale pattern to fit available width
+    const scaledScrollSpeed = availableWidth / patternDuration;
+
+    // Note width scaled for visibility
+    const scaledNoteWidth = Math.max(8, Math.min(this.baseConfig.NOTE_WIDTH, availableWidth / (notes.length || 1) * 0.8));
+
+    // Draw each note with neutral instrument colors
+    notes.forEach(note => {
+      const noteInfo = MIDI_NOTE_MAP[note.midiNote];
+      if (!noteInfo) return;
+
+      // Calculate X position based on note time
+      const xPosition = leftPadding + (note.time * scaledScrollSpeed);
+
+      // Calculate Y position based on lane
+      const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
+
+      // Check if this instrument is muted
+      const isMuted = this.mutedInstruments.has(note.midiNote);
+
+      // Use instrument color (dimmed for preview, gray if muted)
+      const color = isMuted ? '#444' : noteInfo.color;
+
+      // Draw note rectangle with subtle glow
+      this.ctx.fillStyle = color;
+      this.ctx.shadowBlur = isMuted ? 0 : 6;
+      this.ctx.shadowColor = color;
+      this.ctx.globalAlpha = isMuted ? 0.4 : 0.8;
+
+      const padding = 4;
+      this.ctx.fillRect(
+        xPosition - scaledNoteWidth / 2,
+        yPosition + padding,
+        scaledNoteWidth,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+
+      // Draw note border
+      this.ctx.strokeStyle = isMuted ? 'rgba(100, 100, 100, 0.5)' : 'rgba(255, 255, 255, 0.5)';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(
+        xPosition - scaledNoteWidth / 2,
+        yPosition + padding,
+        scaledNoteWidth,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+
+      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = 1.0;
+    });
+  }
+
+  /**
    * Draw hit notes with X-offset based on timing accuracy
    * Notes that were hit early (rushing) appear further left
    * Notes that were hit late (dragging) appear closer to hit line
@@ -831,29 +910,66 @@ export class NoteRenderer {
     const availableWidth = this.canvas.width - leftPadding - rightPadding;
 
     // Calculate scroll speed that fits the entire pattern
-    // Pattern goes from time 0 to patternDuration
-    // We want all notes visible, so scale based on pattern duration
     const scaledScrollSpeed = availableWidth / patternDuration;
 
     // Note width should also scale, but with a minimum size for visibility
     const scaledNoteWidth = Math.max(8, Math.min(this.baseConfig.NOTE_WIDTH, availableWidth / (notes.length || 1) * 0.8));
 
-    // Draw each note with scaled positioning
+    const padding = 4;
+
+    // FIRST PASS: Draw "ideal" notes at exact pattern positions (gray outline)
+    // This shows where notes SHOULD have been played - visible through the actual notes
     notes.forEach(note => {
       const noteInfo = MIDI_NOTE_MAP[note.midiNote];
       if (!noteInfo) return;
 
-      // Calculate X position: note.time maps to position in available width
-      // time 0 -> leftPadding, time patternDuration -> leftPadding + availableWidth
-      let xPosition = leftPadding + (note.time * scaledScrollSpeed);
+      // Calculate X position at EXACT pattern position (no timeDiff offset)
+      const idealXPosition = leftPadding + (note.time * scaledScrollSpeed);
+      const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
 
-      // Apply accuracy offset if note was hit (scaled proportionally)
+      // Draw ideal note as a semi-transparent gray fill with distinct border
+      this.ctx.fillStyle = 'rgba(80, 80, 80, 0.4)';
+      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = 1.0;
+
+      this.ctx.fillRect(
+        idealXPosition - scaledNoteWidth / 2,
+        yPosition + padding,
+        scaledNoteWidth,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+
+      // White dashed border for ideal notes to distinguish from actual
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([3, 3]);
+      this.ctx.strokeRect(
+        idealXPosition - scaledNoteWidth / 2,
+        yPosition + padding,
+        scaledNoteWidth,
+        this.config.LANE_HEIGHT - padding * 2
+      );
+      this.ctx.setLineDash([]);
+    });
+
+    // SECOND PASS: Draw "actual" notes with offset based on timeDiff
+    // This shows where notes WERE actually played (rushing/dragging)
+    notes.forEach(note => {
+      const noteInfo = MIDI_NOTE_MAP[note.midiNote];
+      if (!noteInfo) return;
+
+      // Calculate X position with accuracy offset (capped for visual clarity)
+      let actualXPosition = leftPadding + (note.time * scaledScrollSpeed);
+
+      // Apply accuracy offset if note was hit
       if (note.accuracy && !note.accuracy.missed) {
-        const accuracyOffset = (note.accuracy.timeDiff || 0) * scaledScrollSpeed;
-        xPosition += accuracyOffset;
+        // Cap the offset to prevent extreme visual shifts
+        const maxOffsetMs = 150; // Cap at ±150ms visual offset
+        const clampedTimeDiff = Math.max(-maxOffsetMs, Math.min(maxOffsetMs, note.accuracy.timeDiff || 0));
+        const accuracyOffset = clampedTimeDiff * scaledScrollSpeed;
+        actualXPosition += accuracyOffset;
       }
 
-      // Calculate Y position based on lane
       const yPosition = noteInfo.lane * this.config.LANE_HEIGHT;
 
       // Check if this instrument is muted
@@ -862,15 +978,14 @@ export class NoteRenderer {
       // Get accuracy-based color (gray if muted)
       const color = isMuted ? '#444' : this.getAccuracyColor(note.accuracy);
 
-      // Draw note rectangle with glow (reduced for muted)
+      // Draw actual note with transparency to show ideal notes underneath
       this.ctx.fillStyle = color;
-      this.ctx.shadowBlur = isMuted ? 0 : 8;
+      this.ctx.shadowBlur = isMuted ? 0 : 4;
       this.ctx.shadowColor = color;
-      this.ctx.globalAlpha = isMuted ? 0.4 : 1.0;
+      this.ctx.globalAlpha = isMuted ? 0.4 : 0.7;
 
-      const padding = 4;
       this.ctx.fillRect(
-        xPosition - scaledNoteWidth / 2,
+        actualXPosition - scaledNoteWidth / 2,
         yPosition + padding,
         scaledNoteWidth,
         this.config.LANE_HEIGHT - padding * 2
@@ -880,7 +995,7 @@ export class NoteRenderer {
       this.ctx.strokeStyle = isMuted ? 'rgba(100, 100, 100, 0.5)' : 'rgba(255, 255, 255, 0.7)';
       this.ctx.lineWidth = 1;
       this.ctx.strokeRect(
-        xPosition - scaledNoteWidth / 2,
+        actualXPosition - scaledNoteWidth / 2,
         yPosition + padding,
         scaledNoteWidth,
         this.config.LANE_HEIGHT - padding * 2

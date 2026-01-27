@@ -16,7 +16,7 @@ import { writable, derived, get } from 'svelte/store';
 const DEFAULTS = {
   bpm: 101,
   pattern: 'funky_drummer_break_intro',
-  loopCount: '4',  // String to match HTML option values
+  loopCount: '1',  // String to match HTML option values
   gamePhase: 'ready',
 
   metronomeVolume: 50,
@@ -54,7 +54,10 @@ const DEFAULTS = {
 
   // Infinite loop
   isInfiniteLoop: false,
-  infiniteLoopIteration: 0
+  infiniteLoopIteration: 0,
+
+  // Quantize toggle
+  isQuantized: false
 };
 
 // Create individual writable stores for each piece of state
@@ -106,6 +109,9 @@ export const finalCombo = writable(DEFAULTS.finalCombo);
 // Infinite loop tracking
 export const isInfiniteLoop = writable(DEFAULTS.isInfiniteLoop);
 export const infiniteLoopIteration = writable(DEFAULTS.infiniteLoopIteration);
+
+// Quantize toggle
+export const isQuantized = writable(DEFAULTS.isQuantized);
 
 // Debounce stats (filtered inputs count)
 export const debounceFiltered = writable(0);
@@ -177,7 +183,10 @@ export function setBpm(newBpm) {
 export function setPattern(patternId) {
   if (!get(canChangeSettings)) return;
   pattern.set(patternId);
+  // Reset quantize state when pattern changes
+  isQuantized.set(false);
   if (gameEngine) {
+    gameEngine.resetQuantize();
     gameEngine.changePattern(patternId);
     // Pattern change may update BPM to pattern default
     bpm.set(gameEngine.currentBPM);
@@ -269,10 +278,23 @@ export function toggleTheme() {
   }
 }
 
-export function quantizePattern() {
+export function toggleQuantize() {
   if (gameEngine) {
-    gameEngine.quantizeCurrentPattern();
+    const newState = gameEngine.toggleQuantize();
+    isQuantized.set(newState);
   }
+}
+
+export function resetQuantize() {
+  isQuantized.set(false);
+  if (gameEngine) {
+    gameEngine.resetQuantize();
+  }
+}
+
+// Legacy function for backwards compatibility
+export function quantizePattern() {
+  toggleQuantize();
 }
 
 export function clearStats() {

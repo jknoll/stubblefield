@@ -172,7 +172,7 @@ export class MidiHandler {
   }
 
   /**
-   * Get list of available MIDI devices
+   * Get list of available MIDI devices (active inputs only - for backwards compatibility)
    * @returns {Array} Array of device objects
    */
   getAvailableDevices() {
@@ -185,11 +185,24 @@ export class MidiHandler {
   }
 
   /**
+   * Get list of ALL MIDI devices (for dropdown population)
+   * @returns {Array} Array of device objects
+   */
+  getAllDevices() {
+    return this.allInputs.map(input => ({
+      id: input.id,
+      name: input.name,
+      manufacturer: input.manufacturer,
+      state: input.state
+    }));
+  }
+
+  /**
    * Check if any MIDI devices are connected
    * @returns {boolean}
    */
   hasDevices() {
-    return this.activeInputs.length > 0;
+    return this.allInputs.length > 0;
   }
 
   /**

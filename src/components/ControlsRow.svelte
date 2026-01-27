@@ -6,10 +6,11 @@
     patterns,
     patternCategories,
     canChangeSettings,
+    isQuantized,
     setBpm,
     setPattern,
     setLoopCount,
-    quantizePattern
+    toggleQuantize
   } from '../stores/uiStore.js';
 
   export let metronomeCanvas;
@@ -39,7 +40,7 @@
   }
 
   function handleQuantize() {
-    quantizePattern();
+    toggleQuantize();
   }
 
   // Group patterns by category
@@ -58,12 +59,13 @@
     style="display: none;"
   ></canvas>
 
-  <div class="tempo-control">
+  <div class="tempo-control" title="Beats per minute - controls playback speed">
     <button
       id="bpm-down"
       class="bpm-btn"
       on:click={handleBpmDown}
       disabled={!$canChangeSettings}
+      title="Decrease BPM"
     >-</button>
     <span class="tempo-display">
       <span id="bpm-display">{$bpm}</span> BPM
@@ -73,6 +75,7 @@
       class="bpm-btn"
       on:click={handleBpmUp}
       disabled={!$canChangeSettings}
+      title="Increase BPM"
     >+</button>
   </div>
 
@@ -85,6 +88,7 @@
     step="1"
     on:input={handleBpmSlider}
     disabled={!$canChangeSettings}
+    title="Drag to adjust tempo (30-200 BPM)"
   />
 
   <select
@@ -92,6 +96,7 @@
     value={$pattern}
     on:change={handlePatternChange}
     disabled={!$canChangeSettings}
+    title="Select a drum pattern to practice"
   >
     {#each groupedPatterns as group}
       <optgroup label={group.category}>
@@ -107,6 +112,7 @@
     value={$loopCount}
     on:change={handleLoopChange}
     disabled={!$canChangeSettings}
+    title="Number of times to repeat the pattern (∞ = infinite loop)"
   >
     <option value="1">1x</option>
     <option value="2">2x</option>
@@ -119,14 +125,27 @@
   <button
     id="quantize-btn"
     class="btn btn-small"
-    title="Snap pattern notes to grid"
+    class:active={$isQuantized}
+    title={$isQuantized ? "Click to restore original timing" : "Snap pattern notes to grid"}
     on:click={handleQuantize}
     disabled={!$canChangeSettings}
   >
-    Quantize
+    {$isQuantized ? 'Quantize ✓' : 'Quantize'}
   </button>
 </section>
 
 <style>
   /* Styles inherited from main.css */
+
+  /* Active state for quantize toggle */
+  :global(#quantize-btn.active) {
+    background: var(--accent-primary, #00e5ff);
+    color: var(--bg-primary, #0a0a0f);
+    border-color: var(--accent-primary, #00e5ff);
+  }
+
+  :global(#quantize-btn.active:hover) {
+    background: var(--accent-secondary, #00b8d4);
+    border-color: var(--accent-secondary, #00b8d4);
+  }
 </style>
