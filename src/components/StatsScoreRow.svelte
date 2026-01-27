@@ -48,33 +48,33 @@
   <!-- Score Display (Right) -->
   <div class="score-panel">
     <div class="score-card">
-      <div class="score-item">
+      <div class="score-item" title="Total score = base points × combo multiplier. Perfect hits earn 100 pts, Good 75 pts, OK 50 pts.">
         <label>Score</label>
         <span id="total-score" class="score-value">{$score}</span>
       </div>
-      <div class="score-item">
+      <div class="score-item" title="Current streak of consecutive hits without misses. Higher combos multiply your score (1x at 0, up to 4x at 32+).">
         <label>Combo</label>
         <span id="combo" class="score-value">{$combo}</span>
       </div>
-      <div class="score-item">
+      <div class="score-item" title="Percentage of notes hit within the timing window. (Perfect + Good + OK) / Total Notes × 100">
         <label>Accuracy</label>
         <span id="accuracy" class="score-value">{$accuracy}%</span>
       </div>
     </div>
     <div class="judgment-stats">
-      <div class="judgment-item">
+      <div class="judgment-item" title="Within ±50ms of perfect timing">
         <span class="judgment-label perfect">Perfect</span>
         <span id="perfect-count">{$judgments.perfect}</span>
       </div>
-      <div class="judgment-item">
+      <div class="judgment-item" title="Within ±100ms of perfect timing">
         <span class="judgment-label good">Good</span>
         <span id="good-count">{$judgments.good}</span>
       </div>
-      <div class="judgment-item">
+      <div class="judgment-item" title="Within ±150ms of perfect timing">
         <span class="judgment-label ok">OK</span>
         <span id="ok-count">{$judgments.ok}</span>
       </div>
-      <div class="judgment-item">
+      <div class="judgment-item" title="Missed the note or hit beyond ±150ms">
         <span class="judgment-label miss">Miss</span>
         <span id="miss-count">{$judgments.miss}</span>
       </div>

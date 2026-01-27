@@ -46,7 +46,7 @@
 </script>
 
 <section class="settings-row">
-  <div class="setting-group">
+  <div class="setting-group" title="Select drum kit sound (Classic Rock, Soul/Funk, TR-808, TR-909)">
     <label for="kit-select">Kit</label>
     <select
       id="kit-select"
@@ -60,7 +60,7 @@
     </select>
   </div>
 
-  <div class="setting-group dial-group">
+  <div class="setting-group dial-group" title="Adjust drum tone/brightness (low filter). 0% = muffled, 100% = bright">
     <label for="tone-dial">Tone</label>
     <div class="dial-container">
       <input
@@ -78,7 +78,7 @@
     </div>
   </div>
 
-  <div class="setting-group dial-group">
+  <div class="setting-group dial-group" title="Add room reverb/ambiance to drum sounds. 0% = dry, 100% = wet">
     <label for="reverb-dial">Room</label>
     <div class="dial-container">
       <input
@@ -96,7 +96,7 @@
     </div>
   </div>
 
-  <div class="setting-group">
+  <div class="setting-group" title="Volume of the click track that plays on each beat">
     <label for="metronome-volume">Metronome</label>
     <input
       type="range"
@@ -110,7 +110,7 @@
     <span id="metronome-volume-display">{$metronomeVolume}%</span>
   </div>
 
-  <div class="setting-group">
+  <div class="setting-group" title="Volume of the backing drum track (pattern playback)">
     <label for="drums-volume">Track</label>
     <input
       type="range"

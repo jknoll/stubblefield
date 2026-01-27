@@ -5,6 +5,9 @@ export class StatsGraph {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
+    // Handle high-DPI displays for crisp rendering
+    this.setupHighDPI();
+
     // Theme color palettes - matching design system
     this.themeColors = {
       dark: {
@@ -44,6 +47,32 @@ export class StatsGraph {
   }
 
   /**
+   * Setup high-DPI canvas for crisp rendering on Retina displays
+   */
+  setupHighDPI() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas.getBoundingClientRect();
+
+    // Store logical dimensions
+    this.logicalWidth = rect.width || this.canvas.width;
+    this.logicalHeight = rect.height || this.canvas.height;
+
+    // Set canvas buffer size to match device pixels
+    this.canvas.width = this.logicalWidth * dpr;
+    this.canvas.height = this.logicalHeight * dpr;
+
+    // Set display size via CSS
+    this.canvas.style.width = `${this.logicalWidth}px`;
+    this.canvas.style.height = `${this.logicalHeight}px`;
+
+    // Scale context to match device pixel ratio
+    this.ctx.scale(dpr, dpr);
+
+    // Store dpr for later use
+    this.dpr = dpr;
+  }
+
+  /**
    * Update theme colors
    * @param {string} theme - 'light' or 'dark'
    */
@@ -58,7 +87,9 @@ export class StatsGraph {
    * @param {Object} options - Rendering options
    */
   render(graphData, options = {}) {
-    const { width, height } = this.canvas;
+    // Use logical dimensions for drawing (high-DPI aware)
+    const width = this.logicalWidth || this.canvas.width;
+    const height = this.logicalHeight || this.canvas.height;
     const ctx = this.ctx;
 
     // Clear canvas

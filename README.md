@@ -74,6 +74,18 @@ This is a vanilla JavaScript application with no build step. The main files are:
 - `js/audioManager.js` - Sound synthesis
 - `css/main.css` - Styling
 
+### Testing
+
+Run the automated browser test suite with Playwright:
+
+```bash
+npm run test:e2e          # Headless
+npm run test:e2e:headed   # Visible browser
+npm run test:e2e:ui       # Interactive UI
+```
+
+See [docs/BROWSER-TESTING.md](docs/BROWSER-TESTING.md) for detailed testing documentation.
+
 ## License
 
 MIT

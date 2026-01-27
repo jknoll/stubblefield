@@ -20,7 +20,9 @@
 </script>
 
 <header>
-  <h1>GrooveLab</h1>
+  <div class="header-logo-container">
+    <img src="/img/groovelab.jpg" alt="GrooveLab" class="header-logo" />
+  </div>
   <div class="header-controls">
     <!-- Theme Toggle -->
     <button
@@ -59,5 +61,27 @@
 </header>
 
 <style>
-  /* Styles inherited from main.css */
+  .header-logo-container {
+    height: 60px;
+    width: 240px;
+    overflow: hidden;
+    position: relative;
+    -webkit-mask-image:
+      linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+    mask-image:
+      linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+
+  .header-logo {
+    position: absolute;
+    height: 140px;
+    width: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
 </style>

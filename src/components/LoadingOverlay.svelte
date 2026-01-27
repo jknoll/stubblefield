@@ -3,10 +3,24 @@
 </script>
 
 <div id="loading-overlay" class="loading-overlay">
-  <div class="loading-spinner"></div>
+  <video
+    class="loading-video"
+    autoplay
+    loop
+    muted
+    playsinline
+  >
+    <source src="/img/groovelab.mp4" type="video/mp4" />
+  </video>
   <div class="loading-text">Loading patterns...</div>
 </div>
 
 <style>
-  /* Styles inherited from main.css */
+  .loading-video {
+    max-width: 400px;
+    width: 80%;
+    height: auto;
+    margin-bottom: 20px;
+    border-radius: 8px;
+  }
 </style>

@@ -1,9 +1,16 @@
 <script>
-  import { gameButtonLabel, startGame } from '../stores/uiStore.js';
+  import { gameButtonLabel, gamePhase, startGame } from '../stores/uiStore.js';
 
   function handleClick() {
     startGame();
   }
+
+  $: tooltip = {
+    ready: 'Click to start playing the pattern',
+    playing: 'Click to pause',
+    paused: 'Click to resume',
+    complete: 'Click to start again'
+  }[$gamePhase] || 'Click to start';
 </script>
 
 <section class="controls-container">
@@ -11,6 +18,7 @@
     id="game-btn"
     class="btn btn-primary"
     on:click={handleClick}
+    title={tooltip}
   >
     <span class="btn-icon">{@html $gameButtonLabel.icon}</span>
     {$gameButtonLabel.text}
