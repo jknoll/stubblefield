@@ -1,5 +1,7 @@
 # GrooveLab
 
+[![Playwright Tests](https://github.com/jknoll/stubblefield/actions/workflows/test.yml/badge.svg)](https://github.com/jknoll/stubblefield/actions/workflows/test.yml)
+
 A browser-based drum practice game that uses the Web MIDI API to accept input from electronic drum kits. Players hit notes in time with scrolling patterns (similar to Guitar Hero/Rock Band) and receive timing-based judgments.
 
 Named after Clyde Stubblefield, the legendary drummer known for pioneering funk drumming.
