@@ -25,10 +25,28 @@ export class GameState {
     this.lastFrameTime = 0;
     this.animationFrameId = null;
 
+    // Sequence mode (play in order, not in time)
+    this.sequenceMode = false;
+    this.sequenceWaitingForHit = false;
+    this.sequenceCurrentNoteIndex = 0;
+    this.sequenceCorrectHits = 0;
+    this.sequenceWrongHits = 0;
+    this.sequencePausedTime = null;  // Time when we paused for the current note
+
     // Callbacks
     this.onUpdate = null;
     this.onPatternComplete = null;
     this.onCountdown = null;
+    this.onSequenceProgress = null;  // Called when sequence progress updates
+  }
+
+  /**
+   * Enable or disable sequence mode
+   * @param {boolean} enabled - Whether sequence mode is enabled
+   */
+  setSequenceMode(enabled) {
+    this.sequenceMode = enabled;
+    console.log(`Sequence mode: ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   /**
@@ -76,6 +94,12 @@ export class GameState {
    * @param {number} deltaTime - Time since last frame in ms
    */
   update(deltaTime) {
+    // In sequence mode, handle time differently
+    if (this.sequenceMode) {
+      this.updateSequenceMode(deltaTime);
+      return;
+    }
+
     // Update current time
     this.currentTime = performance.now() - this.startTime;
 
@@ -120,6 +144,146 @@ export class GameState {
     if (this.onUpdate) {
       this.onUpdate();
     }
+  }
+
+  /**
+   * Update logic for sequence mode (play in order, not in time)
+   * Time only advances when the correct note is hit
+   */
+  updateSequenceMode(deltaTime) {
+    // Always make notes active so they're visible
+    this.updateActiveNotes();
+
+    // Check if we're waiting for a hit
+    if (!this.sequenceWaitingForHit && this.activeNotes.length > 0) {
+      // Find the next note to hit (earliest unjudged note)
+      const nextNote = this.activeNotes.find(n => !n.judged);
+      if (nextNote) {
+        this.sequenceWaitingForHit = true;
+        this.sequencePausedTime = nextNote.time;
+        // Position time just before the next note
+        this.currentTime = nextNote.time - 50;
+      }
+    }
+
+    // If we're waiting for a hit, freeze time at the note position
+    if (this.sequenceWaitingForHit) {
+      this.currentTime = this.sequencePausedTime - 50;
+      this.startTime = performance.now() - this.currentTime;
+    } else {
+      // Not waiting - advance time normally
+      this.currentTime = performance.now() - this.startTime;
+    }
+
+    // Check if pattern is complete
+    if (this.sequenceCurrentNoteIndex >= this.pattern.notes.length) {
+      this.checkPatternComplete();
+    }
+
+    // Always notify renderer to update
+    if (this.onUpdate) {
+      this.onUpdate();
+    }
+  }
+
+  /**
+   * Handle a hit in sequence mode
+   * @param {number} midiNote - The MIDI note that was hit
+   * @returns {Object} Result with isCorrect, note, and shouldAdvance
+   */
+  handleSequenceHit(midiNote) {
+    if (!this.sequenceMode || !this.sequenceWaitingForHit) {
+      return { isCorrect: false, note: null, shouldAdvance: false };
+    }
+
+    // Find the current note we're waiting for
+    const currentNote = this.activeNotes.find(n => !n.judged);
+    if (!currentNote) {
+      return { isCorrect: false, note: null, shouldAdvance: false };
+    }
+
+    const isCorrect = currentNote.midiNote === midiNote;
+
+    if (isCorrect) {
+      // Correct hit - mark the note and advance
+      currentNote.judged = true;
+      currentNote.hit = true;
+      currentNote.accuracy = {
+        timeDiff: 0,
+        rushing: false,
+        dragging: false,
+        wrongPad: false,
+        missed: false,
+        judgment: 'PERFECT',  // In sequence mode, correct = perfect
+        sequenceMode: true
+      };
+
+      // Move to hit notes
+      const index = this.activeNotes.indexOf(currentNote);
+      if (index > -1) {
+        this.activeNotes.splice(index, 1);
+      }
+      this.hitNotes.push(currentNote);
+
+      this.sequenceCorrectHits++;
+      this.sequenceCurrentNoteIndex++;
+      this.sequenceWaitingForHit = false;
+
+      // Notify progress
+      if (this.onSequenceProgress) {
+        this.onSequenceProgress(this.sequenceCurrentNoteIndex, this.sequenceCorrectHits, this.sequenceWrongHits);
+      }
+
+      return { isCorrect: true, note: currentNote, shouldAdvance: true };
+    } else {
+      // Wrong hit - count it but don't advance
+      this.sequenceWrongHits++;
+
+      // Record wrong pad hit for feedback
+      this.wrongPadHits.push({
+        time: this.currentTime,
+        midiNote,
+        expectedMidiNote: currentNote.midiNote,
+        timestamp: performance.now()
+      });
+
+      // Notify progress
+      if (this.onSequenceProgress) {
+        this.onSequenceProgress(this.sequenceCurrentNoteIndex, this.sequenceCorrectHits, this.sequenceWrongHits);
+      }
+
+      return { isCorrect: false, note: currentNote, shouldAdvance: false };
+    }
+  }
+
+  /**
+   * Get the current expected note in sequence mode
+   * @returns {Object|null} The note we're waiting for, or null
+   */
+  getSequenceCurrentNote() {
+    if (!this.sequenceMode) return null;
+    return this.activeNotes.find(n => !n.judged) || null;
+  }
+
+  /**
+   * Get sequence mode statistics
+   * @returns {Object} Stats including correct, wrong, remaining, accuracy
+   */
+  getSequenceStats() {
+    const total = this.pattern.notes.length;
+    const remaining = total - this.sequenceCurrentNoteIndex;
+    const accuracy = this.sequenceCorrectHits + this.sequenceWrongHits > 0
+      ? (this.sequenceCorrectHits / (this.sequenceCorrectHits + this.sequenceWrongHits)) * 100
+      : 100;
+
+    return {
+      correct: this.sequenceCorrectHits,
+      wrong: this.sequenceWrongHits,
+      remaining: remaining,
+      total: total,
+      currentIndex: this.sequenceCurrentNoteIndex,
+      accuracy: accuracy.toFixed(1)
+    };
   }
 
   /**
@@ -447,6 +611,13 @@ export class GameState {
     this.hitNotes = [];
     this.missedNotes = [];
     this.wrongPadHits = [];
+
+    // Reset sequence mode state
+    this.sequenceWaitingForHit = false;
+    this.sequenceCurrentNoteIndex = 0;
+    this.sequenceCorrectHits = 0;
+    this.sequenceWrongHits = 0;
+    this.sequencePausedTime = null;
 
     console.log('Game reset');
   }

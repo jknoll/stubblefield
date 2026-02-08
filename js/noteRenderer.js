@@ -183,6 +183,30 @@ export class NoteRenderer {
   }
 
   /**
+   * Flash the expected lane in sequence mode (when user hits wrong pad)
+   * @param {number} lane - The lane number to flash
+   */
+  flashExpectedLane(lane) {
+    // Add a temporary highlight effect for the expected lane
+    const flash = {
+      lane: lane,
+      startTime: performance.now(),
+      duration: 300
+    };
+
+    // Store the flash and trigger re-render
+    if (!this.laneFlashes) {
+      this.laneFlashes = [];
+    }
+    this.laneFlashes.push(flash);
+
+    // Trigger re-render
+    if (this.lastGameState) {
+      this.render(this.lastGameState);
+    }
+  }
+
+  /**
    * Set up canvas dimensions and initial draw
    */
   setupCanvas() {

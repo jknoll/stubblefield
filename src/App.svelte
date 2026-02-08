@@ -8,6 +8,8 @@
   import CompletionPanel from './components/CompletionPanel.svelte';
   import SettingsRow from './components/SettingsRow.svelte';
   import LoadingOverlay from './components/LoadingOverlay.svelte';
+  import MidiUpload from './components/MidiUpload.svelte';
+  import SequenceModeToggle from './components/SequenceModeToggle.svelte';
 
   import {
     setGameEngine,
@@ -21,6 +23,9 @@
     updateDebounceFiltered,
     updateInfiniteLoop,
     updateCurrentPatternInfo,
+    updateSequenceProgress,
+    resetSequenceMode,
+    sequenceMode,
     bpm,
     pattern,
     theme,
@@ -28,6 +33,7 @@
     isKeyboardMode,
     resetScore
   } from './stores/uiStore.js';
+  import { get } from 'svelte/store';
 
   // Import game engine modules
   import { MidiHandler } from '../js/midiHandler.js';
@@ -298,6 +304,11 @@
       this.gameState.onCountdown = (count) => {
         this.showCountdown(count);
       };
+
+      // Sequence mode progress callback
+      this.gameState.onSequenceProgress = (currentIndex, correct, wrong) => {
+        updateSequenceProgress(currentIndex, correct, wrong);
+      };
     }
 
     handleMidiInput(midiNote, velocity, timestamp) {
@@ -313,6 +324,12 @@
 
       if (!this.gameState.isPlaying) return;
       if (isMuted) return;
+
+      // Handle sequence mode differently
+      if (this.gameState.sequenceMode) {
+        this.handleSequenceModeInput(midiNote, noteInfo);
+        return;
+      }
 
       const matchingNote = this.timingJudge.findMatchingNote(
         midiNote,
@@ -340,6 +357,43 @@
         this.showHitFeedback(judgment, noteInfo.lane);
         this.gameState.recordWrongPadHit(midiNote, noteInfo.lane);
       }
+    }
+
+    /**
+     * Handle input in sequence mode (play in order, not in time)
+     */
+    handleSequenceModeInput(midiNote, noteInfo) {
+      const result = this.gameState.handleSequenceHit(midiNote);
+
+      if (result.isCorrect) {
+        // Correct hit
+        const judgment = {
+          judgment: 'PERFECT',
+          score: 100,
+          isCorrect: true,
+          timeDiff: 0
+        };
+        this.scoreManager.recordJudgment(judgment);
+        this.showHitFeedback(judgment, noteInfo.lane);
+      } else if (result.note) {
+        // Wrong hit - show which instrument was expected
+        const expectedNote = MIDI_NOTE_MAP[result.note.midiNote];
+        const judgment = {
+          judgment: 'WRONG_NOTE',
+          score: 0,  // No penalty in sequence mode, just don't advance
+          isCorrect: false
+        };
+        this.showHitFeedback(judgment, noteInfo.lane);
+
+        // Flash the expected lane
+        if (expectedNote) {
+          this.noteRenderer.flashExpectedLane(expectedNote.lane);
+        }
+      }
+
+      // Update sequence progress in store
+      const stats = this.gameState.getSequenceStats();
+      updateSequenceProgress(stats.currentIndex, stats.correct, stats.wrong);
     }
 
     playDrumHit(midiNote, velocity) {
@@ -508,6 +562,12 @@
       this.gamePhase = 'ready';
       updateGamePhase('ready');
       resetScore();
+      resetSequenceMode();
+
+      // Apply sequence mode setting to new game state
+      if (get(sequenceMode)) {
+        this.gameState.setSequenceMode(true);
+      }
 
       this.noteRenderer.render(this.gameState);
       this.metronome.render({ beatNumber: 1, phase: 0 });
@@ -829,6 +889,10 @@
   <Header />
 
   <ControlsRow bind:metronomeCanvas={metronomeCanvasEl} />
+
+  <MidiUpload />
+
+  <SequenceModeToggle />
 
   <GameCanvas bind:canvas={gameCanvasEl} />
 

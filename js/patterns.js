@@ -280,3 +280,112 @@ export const PATTERNS = new Proxy({}, {
     return undefined;
   }
 });
+
+/**
+ * Register a user-uploaded MIDI pattern
+ * @param {ArrayBuffer} buffer - MIDI file data
+ * @param {string} name - User-provided name for the pattern
+ * @param {number} defaultBPM - Optional default BPM (uses detected if not provided)
+ * @returns {Object} The registered pattern info with ID
+ */
+export async function registerUserPattern(buffer, name, defaultBPM = null) {
+  const parser = new MidiParser();
+  const parsed = await parser.parse(buffer);
+
+  // Generate a unique pattern ID
+  const timestamp = Date.now();
+  const safeName = name
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
+  const patternId = `user_${safeName}_${timestamp}`;
+
+  // Calculate duration and bar info
+  const bpm = defaultBPM || parsed.bpm;
+  const rawDuration = parsed.notes.length > 0
+    ? Math.max(...parsed.notes.map(n => n.time))
+    : 0;
+  const beatDuration = (60 / bpm) * 1000;
+  const barDuration = beatDuration * 4;
+  const estimatedBars = Math.max(1, Math.round(rawDuration / barDuration));
+
+  const pattern = {
+    id: patternId,
+    name: name,
+    filename: 'user-upload',
+    category: 'User Uploads',
+    bpm: bpm,
+    defaultBPM: bpm,
+    isLoopBased: true,
+    isFill: false,
+    isVariation: false,
+    featured: false,
+    isUserUpload: true,
+    notes: parsed.notes,
+    rawDuration: rawDuration,
+    estimatedBars: estimatedBars
+  };
+
+  midiPatterns.set(patternId, pattern);
+  console.log(`Registered user pattern: ${name} (${parsed.notes.length} notes at ${bpm} BPM)`);
+
+  return {
+    id: patternId,
+    name: name,
+    category: 'User Uploads',
+    defaultBPM: bpm,
+    noteCount: parsed.notes.length,
+    estimatedBars: estimatedBars
+  };
+}
+
+/**
+ * Load a MIDI pattern from a URL
+ * @param {string} url - URL to the MIDI file
+ * @param {string} name - User-provided name for the pattern
+ * @returns {Object} The registered pattern info with ID
+ */
+export async function loadPatternFromUrl(url, name) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch MIDI file: ${response.status} ${response.statusText}`);
+  }
+  const buffer = await response.arrayBuffer();
+  return registerUserPattern(buffer, name);
+}
+
+/**
+ * Remove a user-uploaded pattern
+ * @param {string} patternId - The pattern ID to remove
+ * @returns {boolean} True if pattern was removed
+ */
+export function removeUserPattern(patternId) {
+  const pattern = midiPatterns.get(patternId);
+  if (pattern && pattern.isUserUpload) {
+    midiPatterns.delete(patternId);
+    console.log(`Removed user pattern: ${patternId}`);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Get all user-uploaded patterns
+ * @returns {Array} Array of user pattern info objects
+ */
+export function getUserPatterns() {
+  const patterns = [];
+  for (const [id, pattern] of midiPatterns) {
+    if (pattern.isUserUpload) {
+      patterns.push({
+        id: id,
+        name: pattern.name,
+        category: pattern.category,
+        defaultBPM: pattern.defaultBPM,
+        noteCount: pattern.notes.length,
+        estimatedBars: pattern.estimatedBars
+      });
+    }
+  }
+  return patterns;
+}

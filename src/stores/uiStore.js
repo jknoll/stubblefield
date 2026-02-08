@@ -54,7 +54,18 @@ const DEFAULTS = {
 
   // Infinite loop
   isInfiniteLoop: false,
-  infiniteLoopIteration: 0
+  infiniteLoopIteration: 0,
+
+  // Sequence mode (play in order, not in time)
+  sequenceMode: false,
+  sequenceCurrentNote: 0,
+  sequenceCorrectHits: 0,
+  sequenceWrongHits: 0,
+
+  // User MIDI uploads
+  userPatterns: [],
+  uploadStatus: null,  // 'loading', 'success', 'error', null
+  uploadError: null
 };
 
 // Create individual writable stores for each piece of state
@@ -109,6 +120,17 @@ export const infiniteLoopIteration = writable(DEFAULTS.infiniteLoopIteration);
 
 // Debounce stats (filtered inputs count)
 export const debounceFiltered = writable(0);
+
+// Sequence mode (play in order, not in time)
+export const sequenceMode = writable(DEFAULTS.sequenceMode);
+export const sequenceCurrentNote = writable(DEFAULTS.sequenceCurrentNote);
+export const sequenceCorrectHits = writable(DEFAULTS.sequenceCorrectHits);
+export const sequenceWrongHits = writable(DEFAULTS.sequenceWrongHits);
+
+// User MIDI uploads
+export const userPatterns = writable(DEFAULTS.userPatterns);
+export const uploadStatus = writable(DEFAULTS.uploadStatus);
+export const uploadError = writable(DEFAULTS.uploadError);
 
 // Derived stores for computed values
 
@@ -387,4 +409,167 @@ export function resetAll() {
   resetScore();
   hideCompletionPanel();
   updateInfiniteLoop(false, 0);
+  resetSequenceMode();
+}
+
+// ============================================
+// Sequence Mode (Play in Order) Functions
+// ============================================
+
+/**
+ * Toggle sequence mode on/off
+ */
+export function toggleSequenceMode() {
+  sequenceMode.update(v => !v);
+  if (gameEngine && gameEngine.gameState) {
+    gameEngine.gameState.setSequenceMode(get(sequenceMode));
+  }
+}
+
+/**
+ * Set sequence mode explicitly
+ */
+export function setSequenceMode(enabled) {
+  sequenceMode.set(enabled);
+  if (gameEngine && gameEngine.gameState) {
+    gameEngine.gameState.setSequenceMode(enabled);
+  }
+}
+
+/**
+ * Update sequence progress
+ */
+export function updateSequenceProgress(currentNote, correct, wrong) {
+  sequenceCurrentNote.set(currentNote);
+  sequenceCorrectHits.set(correct);
+  sequenceWrongHits.set(wrong);
+}
+
+/**
+ * Reset sequence mode state
+ */
+export function resetSequenceMode() {
+  sequenceCurrentNote.set(0);
+  sequenceCorrectHits.set(0);
+  sequenceWrongHits.set(0);
+}
+
+// ============================================
+// User MIDI Upload Functions
+// ============================================
+
+/**
+ * Upload a MIDI file from a File object
+ */
+export async function uploadMidiFile(file) {
+  if (!file) return null;
+
+  uploadStatus.set('loading');
+  uploadError.set(null);
+
+  try {
+    const buffer = await file.arrayBuffer();
+    const name = file.name.replace(/\.mid$/i, '').replace(/\.midi$/i, '');
+
+    // Dynamic import to avoid circular dependencies
+    const { registerUserPattern, getAvailablePatterns, getPatternCategories } = await import('../../js/patterns.js');
+
+    const result = await registerUserPattern(buffer, name);
+
+    // Update the patterns list in the store
+    const patternList = getAvailablePatterns();
+    const categories = getPatternCategories();
+    updatePatterns(patternList, categories);
+
+    // Update user patterns list
+    const { getUserPatterns } = await import('../../js/patterns.js');
+    userPatterns.set(getUserPatterns());
+
+    uploadStatus.set('success');
+
+    // Auto-select the uploaded pattern
+    setPattern(result.id);
+
+    return result;
+  } catch (error) {
+    console.error('Failed to upload MIDI file:', error);
+    uploadStatus.set('error');
+    uploadError.set(error.message);
+    return null;
+  }
+}
+
+/**
+ * Load a MIDI file from a URL
+ */
+export async function loadMidiFromUrl(url, name) {
+  if (!url) return null;
+
+  uploadStatus.set('loading');
+  uploadError.set(null);
+
+  try {
+    const { loadPatternFromUrl, getAvailablePatterns, getPatternCategories, getUserPatterns } = await import('../../js/patterns.js');
+
+    const result = await loadPatternFromUrl(url, name || 'URL Pattern');
+
+    // Update the patterns list in the store
+    const patternList = getAvailablePatterns();
+    const categories = getPatternCategories();
+    updatePatterns(patternList, categories);
+
+    // Update user patterns list
+    userPatterns.set(getUserPatterns());
+
+    uploadStatus.set('success');
+
+    // Auto-select the uploaded pattern
+    setPattern(result.id);
+
+    return result;
+  } catch (error) {
+    console.error('Failed to load MIDI from URL:', error);
+    uploadStatus.set('error');
+    uploadError.set(error.message);
+    return null;
+  }
+}
+
+/**
+ * Remove a user-uploaded pattern
+ */
+export async function removeUploadedPattern(patternId) {
+  try {
+    const { removeUserPattern, getAvailablePatterns, getPatternCategories, getUserPatterns } = await import('../../js/patterns.js');
+
+    const success = removeUserPattern(patternId);
+
+    if (success) {
+      // Update the patterns list in the store
+      const patternList = getAvailablePatterns();
+      const categories = getPatternCategories();
+      updatePatterns(patternList, categories);
+
+      // Update user patterns list
+      userPatterns.set(getUserPatterns());
+
+      // If the removed pattern was selected, switch to a different one
+      if (get(pattern) === patternId && patternList.length > 0) {
+        setPattern(patternList[0].id);
+      }
+    }
+
+    return success;
+  } catch (error) {
+    console.error('Failed to remove pattern:', error);
+    return false;
+  }
+}
+
+/**
+ * Clear upload status
+ */
+export function clearUploadStatus() {
+  uploadStatus.set(null);
+  uploadError.set(null);
 }
