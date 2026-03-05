@@ -1,35 +1,52 @@
 # GrooveLab
 
-[![Playwright Tests](https://github.com/jknoll/stubblefield/actions/workflows/test.yml/badge.svg)](https://github.com/jknoll/stubblefield/actions/workflows/test.yml)
+<p align="center">
+  <img src="img/groovelab-header.jpg" alt="GrooveLab" width="600">
+</p>
 
-A browser-based drum practice game that uses the Web MIDI API to accept input from electronic drum kits. Players hit notes in time with scrolling patterns (similar to Guitar Hero/Rock Band) and receive timing-based judgments.
+<p align="center">
+  <a href="https://github.com/jknoll/stubblefield/actions/workflows/test.yml"><img src="https://github.com/jknoll/stubblefield/actions/workflows/test.yml/badge.svg" alt="Playwright Tests"></a>
+  <a href="https://groovelab.vercel.app"><img src="https://img.shields.io/badge/demo-groovelab.vercel.app-blue" alt="Live Demo"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"></a>
+</p>
 
-Named after Clyde Stubblefield, the legendary drummer known for pioneering funk drumming.
+A browser-based drum practice game that uses the Web MIDI API to accept input from electronic drum kits. Hit notes in time with scrolling patterns — like Guitar Hero, but for real drummers.
+
+Named after [Clyde Stubblefield](https://en.wikipedia.org/wiki/Clyde_Stubblefield), the legendary drummer known for pioneering funk drumming.
+
+<p align="center">
+  <img src="img/Screenshot 2026-03-05 at 2.09.10 PM.png" alt="GrooveLab gameplay screenshot" width="700">
+</p>
 
 ## Features
 
-- Real-time drum practice with scrolling note visualization
-- Support for MIDI drum kits via Web MIDI API
+- Scrolling note visualization with real-time timing judgments (Perfect, Good, OK, Miss)
+- MIDI drum kit support via Web MIDI API
 - Keyboard fallback for practice without hardware
-- Multiple drum patterns (Funky Drummer, Rock, House, Hip-Hop, Amen Break, Funk)
-- Timing judgments (Perfect, Good, OK, Miss) with combo system
-- Progress tracking with historical accuracy graphs
+- Built-in patterns: Funky Drummer, Rock, House, Hip-Hop, Amen Break, Funk
+- Combo scoring system with letter grades
+- Historical accuracy tracking with progress graphs
 - Infinite loop mode for continuous practice
-- Adjustable tempo and metronome
+- Adjustable tempo and visual metronome
 - MIDI pad light support for compatible controllers (MPD-218, etc.)
+
+## Try It
+
+**[groovelab.vercel.app](https://groovelab.vercel.app)** — works in Chrome or Edge.
 
 ## Quick Start
 
-1. Clone the repository
-2. Start the server:
-   ```bash
-   node serve.js
-   ```
-3. Open `http://localhost:8080` in Chrome or Edge
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:8080` in Chrome or Edge.
 
 ## Controls
 
 ### Keyboard
+
 | Key | Drum |
 |-----|------|
 | A | Kick |
@@ -40,45 +57,43 @@ Named after Clyde Stubblefield, the legendary drummer known for pioneering funk 
 | L | Hi-Hat Open |
 
 ### MIDI
-Connect any MIDI drum kit - the app automatically detects:
-- Note 36: Kick
-- Note 38: Snare
-- Note 42: Hi-Hat Closed
-- Note 46: Hi-Hat Open
-- Note 48: Tom 1
-- Note 50: Tom 2
+
+Connect any MIDI drum kit — the app auto-detects standard GM drum mapping:
+
+| Note | Drum |
+|------|------|
+| 36 | Kick |
+| 38 | Snare |
+| 42 | Hi-Hat Closed |
+| 46 | Hi-Hat Open |
+| 48 | Tom 1 |
+| 50 | Tom 2 |
 
 ## Browser Requirements
 
-- Chrome or Edge (required for Web MIDI API)
+- **Chrome or Edge** required for Web MIDI API
 - User interaction required before audio plays (Web Audio API policy)
-
-## Optional Features
-
-### Google Sign-In
-Enable user authentication to sync progress across devices. See [FIREBASE.md](FIREBASE.md) for setup instructions.
-
-### Deployment
-The app includes Vercel configuration for easy deployment:
-```bash
-vercel
-```
 
 ## Development
 
-This is a vanilla JavaScript application with no build step. The main files are:
+Built with **Svelte** (UI) + **vanilla JS** (game engine) + **Vite** (build tool).
 
-- `index.html` - Main page structure
-- `js/main.js` - Game orchestration
-- `js/gameState.js` - Game state management
-- `js/noteRenderer.js` - Canvas rendering
-- `js/midiHandler.js` - MIDI input/output
-- `js/audioManager.js` - Sound synthesis
-- `css/main.css` - Styling
+```
+src/                  # Svelte UI layer
+├── App.svelte        # Main application component
+├── stores/           # Centralized UI state
+└── components/       # UI components
+
+js/                   # Game engine (vanilla JS for 60fps performance)
+├── gameState.js      # Game time, note lifecycle, animation loop
+├── noteRenderer.js   # Canvas-based renderer
+├── audioManager.js   # Web Audio API synthesis (no audio files)
+├── timingJudge.js    # Hit detection and scoring
+├── midiHandler.js    # Web MIDI API wrapper
+└── ...
+```
 
 ### Testing
-
-Run the automated browser test suite with Playwright:
 
 ```bash
 npm run test:e2e          # Headless
@@ -86,7 +101,11 @@ npm run test:e2e:headed   # Visible browser
 npm run test:e2e:ui       # Interactive UI
 ```
 
-See [docs/BROWSER-TESTING.md](docs/BROWSER-TESTING.md) for detailed testing documentation.
+See [docs/BROWSER-TESTING.md](docs/BROWSER-TESTING.md) for details.
+
+### Optional: Google Sign-In
+
+Enable user authentication to sync progress across devices. See [FIREBASE.md](FIREBASE.md) for setup.
 
 ## License
 
