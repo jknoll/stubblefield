@@ -12,10 +12,8 @@
 
 A browser-based drum practice game that uses the Web MIDI API to accept input from electronic drum kits. Hit notes in time with scrolling patterns — like Guitar Hero, but for real drummers.
 
-Named after [Clyde Stubblefield](https://en.wikipedia.org/wiki/Clyde_Stubblefield), the legendary drummer known for pioneering funk drumming.
-
 <p align="center">
-  <img src="img/Screenshot 2026-03-05 at 2.09.10 PM.png" alt="GrooveLab gameplay screenshot" width="700">
+  <img src="img/screenshot.png" alt="GrooveLab gameplay screenshot" width="700">
 </p>
 
 ## Features
